@@ -51,4 +51,8 @@ def get_camera_serial_number():
 
     return cameras, serial_number
 
+def get_camera_paramaters():
+    #this is the changes from the new branch and add the function later in the master
+    pass
+
     
