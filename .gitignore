@@ -1,5 +1,6 @@
-# ignore the directory project_aux
+# ignore the directory
 project_aux
+test_folder
 
 # ignore pycache files
 *.pyc
