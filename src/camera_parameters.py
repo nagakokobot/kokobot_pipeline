@@ -2,7 +2,7 @@ import pyzed.sl as sl
 import argparse
 import os
 
-from defaults import camera_init_parameters
+from defaults import camera_init_parameters, camera_runtime_parameters
 from helpers import sort_args, create_folder
 
 
@@ -57,7 +57,7 @@ def get_camera_serial_number():
 
     return cameras, serial_number
 
-def get_camera_paramaters(args:argparse.ArgumentParser, serial_number:int = 35162414, save_path:str=None):
+def get_init_camera_paramaters(args:dict, save_path:str,serial_number:int = 35162414):
     '''
     The camera parameters are required for opening the camera object.
     - The initparameters contains many important features on how to open the camera.
@@ -74,8 +74,6 @@ def get_camera_paramaters(args:argparse.ArgumentParser, serial_number:int = 3516
     ## get the user requested parameters and fill the new_args_dict.
     d_init_params, mapping, options  = camera_init_parameters()
 
-    if not isinstance(args, dict):    # for testing purpose
-        args = vars(args)
     print(args)  #TODO: Remove the none values from args
     possible_args = sort_args(args, options)
     #print('possible args before fps :', possible_args)
@@ -118,8 +116,29 @@ def get_camera_paramaters(args:argparse.ArgumentParser, serial_number:int = 3516
     init_params.save(save_path+"/initParameters.conf")
     return init_params
 
+def get_runtime_camera_parameters(args:dict, save_path:str):
 
+    runtime_params = sl.RuntimeParameters()
+    d_runtime_params = camera_runtime_parameters()
+    possible_args = sort_args(args, d_runtime_params)
+    if possible_args:
+        for i in possible_args:
+            if i == 'measure3D_reference_frame' and args[i] != 'camera':   #TODO: add all the possible options in the argprase
+                runtime_params.measure3D_reference_frame = sl.REFERENCE_FRAME.WORLD
+            elif i == 'confidence_threshold' and args[i] != 95:
+                runtime_params.confidence_threshold = args[i]
+            elif i == 'texture_confidence_threshold':
+                runtime_params.texture_confidence_threshold = args[i]
 
+    try: #important while testing as save wont overwrite .conf file for run time parameters
+        s_flag = runtime_params.save(save_path + '/runtimeParameters')
+        if not s_flag:
+            os.remove(save_path+'/runtimeParameters.yml')
+            runtime_params.save(save_path+ '/runtimeParameters')
+    except Exception as e:
+        print(e)
+    
+    return runtime_params
 
 
 
@@ -127,11 +146,21 @@ def get_camera_paramaters(args:argparse.ArgumentParser, serial_number:int = 3516
 
 if __name__ == '__main__':
 
-
+    '''
+    #for testing get_init_camera_parameters..
     u_args = {'camera_resolution': 'HD720',
               'camera_fps': 60,
           'depth_mode': 'PERFORMANCE'}
+    _, s_path = create_folder('test_folder1')
     #u_args = {'runtime': 0}
-    retu = get_camera_paramaters(args = u_args)
+    init_params = get_init_camera_paramaters(args = u_args, save_path=s_path)
+    print(init_params)
+    '''
 
+    #for testing get_runtime_camera_parameters..
+    _, s_path = create_folder('test_folder1')
+    u_args = {'measure3D_reference_frame': 'world',
+              'confidence_threshold': 70}
+    run_params = get_runtime_camera_parameters(args = u_args, save_path=s_path)
+    
     

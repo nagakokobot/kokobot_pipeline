@@ -31,3 +31,15 @@ def camera_init_parameters():
                      'coordinate_units': ['mm','cm', 'm']}
 
     return d_init_params, parms_mapping, parms_options
+
+
+def camera_runtime_parameters():
+
+    params = {'measure3D_reference_frame': {'world': sl.REFERENCE_FRAME.WORLD,
+                                                    'camera': sl.REFERENCE_FRAME.CAMERA},
+                      'confidence_threshold': range(1,101),
+                      'texture_confidence_threshold': range(1,101)}
+
+    #TODO: delete the dict later and change it to the list below. (change the helper.sort_args to accept options as a list also before changing this function)
+    #params = ['measure3D_reference_frame','confidence_threshold','texture_confidence_threshold']
+    return params

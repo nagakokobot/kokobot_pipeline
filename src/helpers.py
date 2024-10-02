@@ -21,6 +21,8 @@ def create_folder(name):
     if not os.path.exists(c_path):
         os.mkdir(c_path)
         flag = True
+    else:
+        print(f'overwriting the folder {name}, which already exists')
 
     return flag, c_path
 
