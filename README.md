@@ -2,7 +2,7 @@
 Contains the code for the thesis 'Grasp detection and tool handover by cobots'.
 
 ## Project structure
-'''bash
+```bash
 Kokobot_pipeline/ 
 ├── pre_trained_models
 │   ├── detection
@@ -27,4 +27,4 @@ Kokobot_pipeline/
     ├── detection.py
     ├── helpers.py
     └── main.py
-'''
+```
