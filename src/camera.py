@@ -21,7 +21,7 @@ class get_images:
             named_window = f'workspace_{s_number}'
             cvImage = rgb.get_data()
             cv2.imshow(named_window, cvImage)
-            print('press any to exit and continue execution')
+            #print('press any to exit and continue execution')
             cv2.waitKey(4000)
         self.save_rgbd(rgb, depth, self.s_path)
         

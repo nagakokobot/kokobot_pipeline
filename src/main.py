@@ -6,6 +6,7 @@ from datetime import datetime
 from camera_parameters import get_camera_serial_number, get_init_camera_paramaters, get_runtime_camera_parameters
 from helpers import create_folder
 from camera import get_images
+from detection import detection
 
 
 def parse_args():
@@ -60,3 +61,6 @@ if __name__ == '__main__':
         init_params = get_init_camera_paramaters(args = args, serial_number= serial_number, save_path = s_path)
         runtime_params = get_runtime_camera_parameters(args = args, save_path=s_path)
         get_images(initparameters= init_params, runtimeparameters=runtime_params, save_path= s_path, show_workspace= True)
+
+        # in progress
+        objects, flag = detection(workfolder = folder_name, detector_version = 'v5' or 'v8')
