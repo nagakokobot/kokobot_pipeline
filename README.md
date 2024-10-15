@@ -13,7 +13,7 @@ Kokobot_pipeline/
 │   │       ├── best.pt
 │   │       └── last.pt
 │   └── grap_synthesis
-├── project_aux
+├── project_aux                             #contains folders required for runtime
 │   └── 2024-10-15_13-58-29
 │       ├── initParameters.conf.yml
 │       ├── rgb_image.png
