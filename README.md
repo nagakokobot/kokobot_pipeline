@@ -2,6 +2,7 @@
 Contains the code for the thesis 'Grasp detection and tool handover by cobots'.
 
 ## Project structure
+'''bash
 Kokobot_pipeline/ 
 ├── project_aux                                 #contains folders required for runtime 
 │    ├── workspace                              # created directory in the runtime to work on (structure could be changes as the project goes on)
@@ -28,3 +29,4 @@ Kokobot_pipeline/
 ├── .gitignore                                  # Specifies files to ignore by Git 
 ├── README.md                                   # Documentation for your project 
 ├── requirements.txt                            # Python dependencies (used by pip)
+'''
