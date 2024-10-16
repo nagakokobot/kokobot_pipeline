@@ -1,7 +1,7 @@
 import pyzed.sl as sl
 import torch, torchvision
 
-from defaults import get_model_path
+from helpers import get_model_path
 
 
 class detection:
