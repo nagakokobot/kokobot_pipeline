@@ -59,4 +59,4 @@ class get_images:
         cv2.imwrite(d_path, depth_mat.get_data())
         print('saved true_depth.tiff')
   
-        pass
+        return img_path, d_path

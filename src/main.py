@@ -1,12 +1,13 @@
 import argparse
 import sys
 import pyzed.sl as sl
+import torch
 from datetime import datetime
 
 from camera_parameters import get_camera_serial_number, get_init_camera_paramaters, get_runtime_camera_parameters
 from helpers import create_folder
 from camera import get_images
-from detection import detection
+from detection import detection, run_inference
 
 
 def parse_args():
@@ -23,6 +24,9 @@ def parse_args():
     #parser.add_argument('--confidence-threshold', type=int, default= 95, choices= range(1,101), help = 'removes the depth values from the mat if depth confidence less than this parameter')
     #parser.add_argument('--texture-confidence-threshold', type=int, default= 100, choices= range(1,101), help = 'Decreasing this value will remove depth data from image areas which are uniform')
 
+    #for detection.py
+    parser.add_argument('--det_device', type=str, default= 'cpu', choices=['cpu', 'gpu'], help="select the device where the detection happens")
+    parser.add_argument('--det_ver', type=str, default= 'v5', choices=['v5', 'v8'], help="select the version of yolo to be used for detection")
 
 
     args = parser.parse_args()
@@ -33,7 +37,7 @@ def parse_args():
 if __name__ == '__main__':
 
     #for testing:
-    sys.argv = ['main.py', '--camera-resolution', 'HD1080']
+    sys.argv = ['main.py', '--camera-resolution', 'HD720']
     #sys.argv = ['main.py', '--fps', 30]
     #sys.argv = ['main.py', '--measure3D-reference-frame', 'world']
     #sys.argv = ['main.py', '--confidence-threshold', 50]
@@ -47,7 +51,7 @@ if __name__ == '__main__':
     args = parse_args()
     print('args initially:', args)
     if not isinstance(args, dict):    # for testing purpose
-        args = vars(args)
+        args_dict = vars(args)
     else:
         pass
 
@@ -58,9 +62,18 @@ if __name__ == '__main__':
         # Check if cameras were connected 
         cameras,serial_number = get_camera_serial_number()
 
-        init_params = get_init_camera_paramaters(args = args, serial_number= serial_number, save_path = s_path)
-        runtime_params = get_runtime_camera_parameters(args = args, save_path=s_path)
-        get_images(initparameters= init_params, runtimeparameters=runtime_params, save_path= s_path, show_workspace= True)
+        init_params = get_init_camera_paramaters(args = args_dict, serial_number= serial_number, save_path = s_path)
+        runtime_params = get_runtime_camera_parameters(args = args_dict, save_path=s_path)
+        rgb, depth = get_images(initparameters= init_params, runtimeparameters=runtime_params, save_path= s_path, show_workspace= True)
 
+        model = detection(workfolder = folder_name, detector_version = args.det_ver)
+
+    
+        ## TODO: test inference time on cpu vs gpu:
+        
         # in progress
-        objects, flag = detection(workfolder = folder_name, detector_version = 'v5' or 'v8')
+        # Get inference on Images from the work folder
+        # run Inference on rgb_image 's in the s_path
+        detections_dataframe = run_inference(image = rgb, device = args.det_device, model = model)
+        
+
