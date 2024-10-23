@@ -12,22 +12,9 @@ This script is used to
 - get the camera status
 - get the initial parameters of the cameras connected
 - get the errors if there are any with the connected cameras
-- get and save the images of the work space when the operator is ready (rgb-d, depth, stereo depth, true depth)
 
 # 35162414 - is the camera with birds eye view
 '''
-
-
-
-
-
-def save_rgb_image():
-    pass
-
-
-def save_depth_images():
-    pass
-
 
 def get_camera_serial_number():
 
@@ -74,7 +61,7 @@ def get_init_camera_paramaters(args:dict, save_path:str,serial_number:int = 3516
     ## get the user requested parameters and fill the new_args_dict.
     d_init_params, mapping, options  = camera_init_parameters()
 
-    print(args)  #TODO: Remove the none values from args
+    #print(args)  #TODO: Remove the none values from args
     possible_args = sort_args(args, options)
     #print('possible args before fps :', possible_args)
 
@@ -113,7 +100,7 @@ def get_init_camera_paramaters(args:dict, save_path:str,serial_number:int = 3516
             elif i == 'coordinate_units':
                 init_params.coordinate_units = y
 
-    init_params.save(save_path+"/initParameters.conf")
+    init_params.save(save_path+"/initParameters")
     return init_params
 
 def get_runtime_camera_parameters(args:dict, save_path:str):

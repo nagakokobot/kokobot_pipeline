@@ -49,9 +49,12 @@ class detection:
         return model
         
 def run_inference(model,image_path:str, device:str='cpu'):
-
+    '''TODO: 
+    -to handle image as a path or sl.mat() [Preffered, this could eliminate the need to load the image again from system path]. This enables video frames also could be detected for objects.
+    - also to show the inferences on the image for clear understanding
+    '''    
     #empty dataframe:
-    result = pd.DataFrame(columns = ['x_min', 'ymin', 'x_max', 'y_max', 'class'])
+    #result = pd.DataFrame(columns = ['x_min', 'ymin', 'x_max', 'y_max', 'class'])
     # Set the device
     if device == 'cuda':
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -73,7 +76,7 @@ def run_inference(model,image_path:str, device:str='cpu'):
     
     # Process and return results
     
-    return result
+    return det
         
 
 if __name__ == '__main__':

@@ -20,6 +20,7 @@ def create_folder(name):
     c_path = f'project_aux/{name}'
     if not os.path.exists(c_path):
         os.mkdir(c_path)
+        print(f'Working folder is created with the name: {c_path}')
         flag = True
     else:
         print(f'overwriting the folder {name}, which already exists')

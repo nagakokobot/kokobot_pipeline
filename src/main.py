@@ -6,7 +6,7 @@ from datetime import datetime
 
 from camera_parameters import get_camera_serial_number, get_init_camera_paramaters, get_runtime_camera_parameters
 from helpers import create_folder
-from camera import get_images
+from camera import Camera
 from detection import detection, run_inference
 
 
@@ -64,7 +64,12 @@ if __name__ == '__main__':
 
         init_params = get_init_camera_paramaters(args = args_dict, serial_number= serial_number, save_path = s_path)
         runtime_params = get_runtime_camera_parameters(args = args_dict, save_path=s_path)
-        rgb, depth = get_images(initparameters= init_params, runtimeparameters=runtime_params, save_path= s_path, show_workspace= True)
+        cam = Camera(initparameters= init_params, runtimeparameters=runtime_params, save_path= s_path, show_workspace= True)
+        cam_obj = cam.zed
+        rgb, depth, rgb_path, depth_path = cam.rgb, cam.depth, cam.rgb_path, cam.depth_path
+        #close the camera object
+        if cam_obj.is_opened():
+            cam.close_cam()
 
         model = detection(workfolder = folder_name, detector_version = args.det_ver)
 
@@ -74,6 +79,6 @@ if __name__ == '__main__':
         # in progress
         # Get inference on Images from the work folder
         # run Inference on rgb_image 's in the s_path
-        detections_dataframe = run_inference(image = rgb, device = args.det_device, model = model)
+        detections_dataframe = run_inference(image_path= rgb_path, device = args.det_device, model = model.model)
         
 
