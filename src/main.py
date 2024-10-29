@@ -7,7 +7,7 @@ from datetime import datetime
 from camera_parameters import get_camera_serial_number, get_init_camera_paramaters, get_runtime_camera_parameters
 from helpers import create_folder
 from camera import Camera
-from detection import detection, run_inference
+from detection import Detector, run_inference
 
 
 def parse_args():
@@ -71,7 +71,7 @@ if __name__ == '__main__':
         if cam_obj.is_opened():
             cam.close_cam()
 
-        model = detection(workfolder = folder_name, detector_version = args.det_ver)
+        model = Detector(workfolder = folder_name, detector_version = args.det_ver)
 
     
         ## TODO: test inference time on cpu vs gpu:
@@ -79,6 +79,6 @@ if __name__ == '__main__':
         # in progress
         # Get inference on Images from the work folder
         # run Inference on rgb_image 's in the s_path
-        detections_dataframe = run_inference(image_path= rgb_path, device = args.det_device, model = model.model)
+        detections_dataframe = run_inference(image_path= rgb_path, device = args.det_device, model = model.model, detector_version = args.det_ver)
         
 

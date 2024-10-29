@@ -44,7 +44,7 @@ def get_camera_serial_number():
 
     return cameras, serial_number
 
-def get_init_camera_paramaters(args:dict, save_path:str,serial_number:int = 35162414):
+def get_init_camera_paramaters(args:dict, save_path:str = False,serial_number:int = 35162414):
     '''
     The camera parameters are required for opening the camera object.
     - The initparameters contains many important features on how to open the camera.
@@ -99,8 +99,8 @@ def get_init_camera_paramaters(args:dict, save_path:str,serial_number:int = 3516
                 init_params.depth_mode = y
             elif i == 'coordinate_units':
                 init_params.coordinate_units = y
-
-    init_params.save(save_path+"/initParameters")
+    if save_path:
+        init_params.save(save_path+"/initParameters")
     return init_params
 
 def get_runtime_camera_parameters(args:dict, save_path:str):
