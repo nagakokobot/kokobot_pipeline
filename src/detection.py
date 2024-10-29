@@ -141,7 +141,17 @@ def run_inference(model,image_path:str, device:str='cpu'): # changed to a class 
     
     # Process and return results
     
-    return detdetector_v5
+    return det
+        
+
+if __name__ == '__main__':
+
+    #detect
+    image_path_720 = '/home/student/naga/kokobot_pipeline/test_folder/rgb_image_720.png'
+    image_path_1080 = '/home/student/naga/kokobot_pipeline/test_folder/rgb_image_1080.png'
+
+    
+    #yolov8
     # Run inference on GPU
     #res1 =run_inference(model = detector_v5.model, image_path = image_path_720, device='cuda')
     # Run inference on CPU
