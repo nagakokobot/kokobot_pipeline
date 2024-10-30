@@ -7,7 +7,7 @@ from datetime import datetime
 from camera_parameters import get_camera_serial_number, get_init_camera_paramaters, get_runtime_camera_parameters
 from helpers import create_folder
 from camera import Camera
-from detection import Detector, run_inference
+from detection import Detector, Inference
 
 
 def parse_args():
@@ -27,6 +27,9 @@ def parse_args():
     #for detection.py
     parser.add_argument('--det_device', type=str, default= 'cpu', choices=['cpu', 'gpu'], help="select the device where the detection happens")
     parser.add_argument('--det_ver', type=str, default= 'v5', choices=['v5', 'v8'], help="select the version of yolo to be used for detection")
+    #parser.add_argument('--det_conf', type=str, choices=range(0.01, 1), help="detection model confidence threshold")
+    #parser.add_argument('--iou', type=str, choices=range(0.01,1), help="threshold for Non-Maximum Suppression (NMS)")
+    #parser.add_argument('--img_sz', type=str, default= 'v5', choices=['v5', 'v8'], help="select the version of yolo to be used for detection")
 
 
     args = parser.parse_args()
@@ -37,23 +40,29 @@ def parse_args():
 if __name__ == '__main__':
 
     #for testing:
-    sys.argv = ['main.py', '--camera-resolution', 'HD720']
+    #sys.argv = ['main.py', '--camera-resolution', 'HD720']
     #sys.argv = ['main.py', '--fps', 30]
     #sys.argv = ['main.py', '--measure3D-reference-frame', 'world']
     #sys.argv = ['main.py', '--confidence-threshold', 50]
     #sys.argv = ['main.py', '--texture-confidence-threshold', 50]
     
-
+    #till the argparse is sorted:
+    args_dict = {'camera_resolution': 'HD720',
+            'det_conf': 0.75,
+            'iou': 0.7,
+            'det_ver':'v8',
+            'det_device':'cpu'}
 
     ##main script runs here...
 
     #get the args as dict for passing to the functions. makes it easy for testing and clear code
-    args = parse_args()
-    print('args initially:', args)
-    if not isinstance(args, dict):    # for testing purpose
-        args_dict = vars(args)
-    else:
-        pass
+    if not args_dict:
+        args = parse_args()
+        print('args initially:', args)
+        if not isinstance(args, dict):    # for testing purpose
+            args_dict = vars(args)
+        else:
+            pass
 
     current_time = datetime.now()
     folder_name = current_time.strftime("%Y-%m-%d_%H-%M-%S")
@@ -71,14 +80,17 @@ if __name__ == '__main__':
         if cam_obj.is_opened():
             cam.close_cam()
 
-        model = Detector(workfolder = folder_name, detector_version = args.det_ver)
+        model = Detector(detector_version = args_dict['det_ver'], device=args_dict['det_device'])
 
-    
-        ## TODO: test inference time on cpu vs gpu:
-        
-        # in progress
-        # Get inference on Images from the work folder
-        # run Inference on rgb_image 's in the s_path
-        detections_dataframe = run_inference(image_path= rgb_path, device = args.det_device, model = model.model, detector_version = args.det_ver)
-        
+        inf1 = Inference(model = model.model, image= rgb, detector_version= args_dict['det_ver'], args = args_dict)
+        pr = inf1.process_results()
+        print(pr)
+        # in progress    
+        ## TODO: work with the results and show/save them in respective folder
+        if args_dict['det_ver'] == 'v5':
+            inf1.res.show()
+        if args_dict['det_ver'] == 'v8':  #check the color format
+            for r in inf1.res:
+                r.show()
+                r.save(filename=s_path+'/inference_result_yolov8.png')
 

@@ -1,6 +1,7 @@
 import pyzed.sl as sl
 import cv2
 import sys
+import matplotlib.pyplot as plt
 
 
 class Camera:
@@ -20,8 +21,18 @@ class Camera:
             print('Camera object created for the camera serial number:', s_number)
             self.bgra, self.depth = self.get_mats()
             self.rgb = cv2.cvtColor(self.bgra.get_data(), cv2.COLOR_BGRA2RGB)
+        except Exception as e:
+            print('closing the cam object because of the following error:')
+            print(e)
+            self.zed.close()
+        try:
             if self.show_workspace:
                 self.show_wrkspc(serial_num =s_number)
+        except Exception as e:
+            print('closing the cam object because of the following error:')
+            print(e)
+            self.zed.close()
+        try:         
             if self.s_path != None: 
                 self.rgb_path, self.depth_path = self.save_rgbd()
         except Exception as e:
@@ -96,9 +107,7 @@ class Camera:
         pass
 
 
-if __name__ == '__main__':
-
-    import matplotlib.pyplot as plt
+if __name__ == '__main__': 
     
     from camera_parameters import get_init_camera_paramaters, get_runtime_camera_parameters
     from helpers import create_folder

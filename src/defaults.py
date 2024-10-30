@@ -45,7 +45,14 @@ def camera_runtime_parameters():
     #params = ['measure3D_reference_frame','confidence_threshold','texture_confidence_threshold']
     return params
 
+def det_args():
 
+    options = {'det_conf':0.8,
+               'iou':0.7,
+               'img_sz': None
+               }
+
+    return options
 
 
 if __name__ == '__main__':

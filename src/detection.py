@@ -1,11 +1,14 @@
 import pyzed.sl as sl
-import torch, torchvision
+import torch
 from ultralytics import YOLO
 from datetime import datetime
 import pandas as pd
 from PIL import Image
+import numpy as np
+from typing import Union
 
-from helpers import get_model_path
+from helpers import get_model_path, sort_args
+from defaults import det_args
 
 
 class Detector:
@@ -13,135 +16,116 @@ class Detector:
     This is a class returns the specific detector for object detection.
     - Gets the model from the default path.
     - Checks the saved models have architecture in them
-    - TODO: To generate the rtx engine if needed
-    - TODO: Does the class need a workfolder or will it handle it in the main.py?
-    - TODO: Also make the class set the model parameters from the user.
+    - TODO: How to handle video format.
     '''
-    def __init__(self, workfolder: str = None, detector_version: str = 'v5'):
+    def __init__(self, detector_version: str = 'v5', device:str='cpu'):
 
-        self.folder = workfolder
         self.det_ver = detector_version
-
+        self.device = device
+        if self.device == 'cuda':
+            self.device = torch.device(0 if torch.cuda.is_available() else 'cpu')
+            print(f'Using device: {self.device}')
+            
         #get the path where the model is saved.
-        self.model_path = get_model_path(task = 'detection', version = self.det_ver)
-        print(self.model_path)
-        self.model = self.check_architecture()
+        model_path = get_model_path(task = 'detection', version = self.det_ver)
+        print(model_path)
+        self.model = self.check_architecture(model_path)
 
 
-    def check_architecture(self):
+    def check_architecture(self, model_path):
         '''
         Check if the .pt file has the model architecture saved. else the architecture has to be loaded manually for inference
         - if no model architecture is saved in the saved model, model architecture has to be defined somewhere.
         '''
 
         if self.det_ver == 'v5':
-            #check for achitecture
-            model = torch.load(self.model_path)
-            if isinstance(model, torch.nn.Module):
-                pass
-            else:
-                model = torch.hub.load('ultralytics/yolov5', 'custom', path= self.model_path)
+            model = torch.hub.load('ultralytics/yolov5', 'custom', path= model_path, device =self.device,  force_reload=True)
         else:
-            model = YOLO(self.model_path, task='detect')
+            model = YOLO(model_path, task='detect').to(self.device)
 
-        print(f'Sucessfully loaded model from {self.model_path}')
+        print(f'Sucessfully loaded model from {model_path}')
 
         return model
-
+    
+    def del_model(self):
+        if next(self.model.parameters()).is_cuda:
+            print('Clearing gpu memory')
+            torch.cuda.empty_cache()
+        print('deleting model')
+        del self.model
+        
 
 class Inference:
     '''
     TODO: 
-    -to handle image as a path or sl.mat() [Preffered, this could eliminate the need to load the image again from system path]. This enables video frames also could be detected for objects.
     - also to show the inferences on the image for clear understanding
     '''
 
-    def __init__(self, model, image_path:str,device:str='cpu', detector_version: str = 'v5'):
+    def __init__(self, model, image:Union[str, np.ndarray], detector_version: str = 'v5', args :dict = None):
         self.model = model
-        self.image = image_path
-        self.device = device
+        self.image = image
         self.det_ver = detector_version
-        if self.device == 'cuda':
-            self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-            print('Found cuda, moving model to gpu for inference')
-            self.model.to(self.device)
-            #self.image = self.preprocess_image()
-        else:
-            print('Using cpu for Inference')
-
-        res = self.get_inference()
-        pr = self.process_results(res)
-
+        self.conf, self.iou, _ = process_args(args)
+        self.res = self.get_inference()
+        #pr = self.process_results(self.res)
 
     def get_inference(self):
         if self.det_ver == 'v5':
+            self.model.conf = self.conf
+            self.model.iou = self.iou
             results = self.model(self.image)
         elif self.det_ver == 'v8':
-            results = self.model.predict(self.image)
+            results = self.model.predict(self.image, conf = self.conf, iou = self.iou)
         return results
     
-    def process_results(self, results):
+    def process_results(self):
         '''
         In progress
         returns the detection results in s specific format
         '''
         if self.det_ver == 'v5':
-            df = results.pandas().xyxy[0]
+            df = self.res.pandas().xyxy[0]
         elif self.det_ver == 'v8':
-            columns = ['xmin', 'ymin', 'xmax', 'ymax', 'confidence', 'class', 'name']
-            df = pd.DataFrame(columns=columns)
-            
+            #columns = ['xmin', 'ymin', 'xmax', 'ymax', 'confidence', 'class', 'name']
+            class_names = self.model.names
+
+            all_boxes = []
+            all_confidences = []
+            all_class_ids = []
+            all_class_names = []
+            boxes = self.res[0].boxes
+            for box in boxes:
+                xmin, ymin, xmax, ymax = box.xyxy[0].cpu().numpy()
+                cls_id = box.cls[0].item()  # Extract class ID
+                conf = round(box.conf[0].item(), 2)  # Extract confidence score
+
+                all_boxes.append([xmin, ymin, xmax, ymax])
+                all_confidences.append(conf)
+                all_class_ids.append(cls_id)
+                all_class_names.append(class_names[cls_id])
+            df = pd.DataFrame(all_boxes, columns=['xmin', 'ymin', 'xmax', 'ymax'])
+            df['confidence'] = all_confidences
+            df['class'] = all_class_ids
+            df['name'] = all_class_names
+
         return df
 
-    def preprocess_image(self):
-
-        '''
-        TODO: Check if this class is even necessary
-        '''
-        image = Image.open(self.image).convert('RGB') 
-        preprocess = torchvision.transforms.Compose([
-            torchvision. transforms.Resize((640, 640)),  # Resize to the model's expected input size
-            torchvision. transforms.ToTensor(),  # Convert the image to a tensor
-            ])
-        image_tensor = preprocess(image).unsqueeze(0)  # Add a batch dimension
-        
-        return image_tensor
     
+def process_args(args:dict):
+    '''
+    get the default detection args and compare it with the user defined args and returns user defirned args.
+    '''
+    options = det_args()
+    conf = options['det_conf']
+    iou = options['iou']
+    img_sz = options['img_sz']
+    possible_args = sort_args(args, options)
+    if 'det_conf' in possible_args:
+        conf = args['det_conf']
+    if 'iou' in possible_args:
+        iou = args['iou']
+    return conf, iou, img_sz
 
-
-
-
-
-def run_inference(model,image_path:str, device:str='cpu'): # changed to a class later on
-    '''TODO: 
-    -to handle image as a path or sl.mat() [Preffered, this could eliminate the need to load the image again from system path]. This enables video frames also could be detected for objects.
-    - also to show the inferences on the image for clear understanding
-    '''    
-    #empty dataframe:
-    #result = pd.DataFrame(columns = ['x_min', 'ymin', 'x_max', 'y_max', 'class'])
-    # Set the device
-    if device == 'cuda':
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        print(f'Using {device} for detection')
-        model.to(device)
-        # Now pass the images to gpu for gpu processing
-        image = Image.open(image_path).convert('RGB') 
-        preprocess = torchvision.transforms.Compose([
-            torchvision. transforms.Resize((640, 640)),  # Resize to the model's expected input size
-            torchvision. transforms.ToTensor(),  # Convert the image to a tensor
-            ])
-        image_tensor = preprocess(image).unsqueeze(0)  # Add a batch dimension
-        det = model(image_tensor)
-        print('*'*10,'using gpu','*'*10)
-        print(det)
-    elif device == 'cpu':
-        print('*'*10,'using cpu','*'*10)
-        det = model(image_path)
-        print(det)    
-    
-    # Process and return results
-    
-    return det
         
 
 if __name__ == '__main__':
@@ -149,17 +133,23 @@ if __name__ == '__main__':
     #detect
     image_path_720 = '/home/student/naga/kokobot_pipeline/test_folder/rgb_image_720.png'
     image_path_1080 = '/home/student/naga/kokobot_pipeline/test_folder/rgb_image_1080.png'
-
+    model_ver = 'v8'
+    device = 'cuda'
     
-    #yolov8
-    # Run inference on GPU
-    #res1 =run_inference(model = detector_v5.model, image_path = image_path_720, device='cuda')
-    # Run inference on CPU
-    #res2 = run_inference(model = detector_v5.model, image_path = image_path_720)
+    args = {'det_conf': 0.85,
+            'iou': 0.7}
+    
+    detector = Detector(detector_version=model_ver, device = device)
+    
+    res = Inference(model = detector.model, image= image_path_1080, detector_version= model_ver, args = args)
+    pr = res.process_results()
+    print(pr)
+    #res.show()
+    res2 = Inference(model = detector.model, image= image_path_720, detector_version= model_ver, args = args)
+    pr2= res.process_results()
+    print(pr2)
 
-    #inf = Inference(model = detector_v5.model, image_path = image_path_720)#, device='cuda')
-    #print(inf.detections.pandas().xyxy[0])
-    #inf.detections[0].show
-    #for det in inf.detections:
-        #x1, y1, x2, y2, confidence, cls = det.tolist()
-        
+    detector.del_model()
+
+
+

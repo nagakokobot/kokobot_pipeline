@@ -12,7 +12,9 @@ def sort_args(args, options):
     args_keys = set(args.keys())
     options_keys = set(options.keys())
     possible_options = args_keys.intersection(options_keys)
-    return possible_options
+
+    filtered_options = {option for option in possible_options if args[option]!=None}
+    return filtered_options
 
 def create_folder(name):
     #later has to be changed to handle better folder creation and check
