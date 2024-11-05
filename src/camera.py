@@ -122,21 +122,3 @@ if __name__ == '__main__':
 
     cam = Camera(initparameters= init, runtimeparameters=run, show_workspace= True, save_path=s_path)
     cam.close_cam
-    '''
-    bgra_mat, rgb_np = cam.bgra, cam.rgb
-    bgra_np = bgra_mat.get_data()
-
-    fig, axes = plt.subplots(1, 2, figsize=(10, 5))
-
-    #axes[0].imshow(cv2.cvtColor(bgra_np, cv2.COLOR_BGRA2RGB))
-    axes[0].imshow(bgra_np)
-    axes[0].set_title('BGRA Image')
-    axes[0].axis('off')  # Hide axis
-
-    axes[1].imshow(rgb_np)
-    axes[1].set_title('RGB Image')
-    axes[1].axis('off')  # Hide axis
-
-    plt.tight_layout()
-    plt.show()
-    '''

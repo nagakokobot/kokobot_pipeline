@@ -47,10 +47,10 @@ if __name__ == '__main__':
     #sys.argv = ['main.py', '--texture-confidence-threshold', 50]
     
     #till the argparse is sorted:
-    args_dict = {'camera_resolution': 'HD720',
+    args_dict = {'camera_resolution': 'HD1080',
             'det_conf': 0.75,
             'iou': 0.7,
-            'det_ver':'v8',
+            'det_ver':'v5',
             'det_device':'cpu'}
 
     ##main script runs here...
