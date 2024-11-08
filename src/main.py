@@ -66,7 +66,7 @@ if __name__ == '__main__':
 
     current_time = datetime.now()
     folder_name = current_time.strftime("%Y-%m-%d_%H-%M-%S")
-    flag, s_path = create_folder(folder_name)
+    flag, s_path = create_folder(sub_name=folder_name, parent_name='project_aux')
     if flag:
         # Check if cameras were connected 
         cameras,serial_number = get_camera_serial_number()
@@ -89,8 +89,10 @@ if __name__ == '__main__':
         ## TODO: work with the results and show/save them in respective folder
         if args_dict['det_ver'] == 'v5':
             inf1.res.show()
+            inf1.res.save(save_dir=s_path+'/inference_result')
         if args_dict['det_ver'] == 'v8':  #check the color format
+            _, r_path = create_folder('inference_result',s_path)
             for r in inf1.res:
                 r.show()
                 r.save(filename=s_path+'/inference_result_yolov8.png')
-
+        pr.to_csv(s_path+'/inference_result/detections.csv')

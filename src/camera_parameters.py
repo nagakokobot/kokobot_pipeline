@@ -145,7 +145,7 @@ if __name__ == '__main__':
     '''
 
     #for testing get_runtime_camera_parameters..
-    _, s_path = create_folder('test_folder1')
+    _, s_path = create_folder('test_folder1', 'project_aux')
     u_args = {'measure3D_reference_frame': 'world',
               'confidence_threshold': 70}
     run_params = get_runtime_camera_parameters(args = u_args, save_path=s_path)

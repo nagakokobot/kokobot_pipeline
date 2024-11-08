@@ -1,7 +1,9 @@
 import pyzed.sl as sl
 import cv2
 import sys
+import numpy as np
 import matplotlib.pyplot as plt
+from imageio.v2 import imwrite, imsave
 
 
 class Camera:
@@ -61,7 +63,7 @@ class Camera:
         new_frame_err = self.zed.grab(self.runtimepara)
         if new_frame_err == sl.ERROR_CODE.SUCCESS:
             self.zed.retrieve_image(rgb_mat, sl.VIEW.LEFT)
-            self.zed.retrieve_measure(depth_mat, sl.MEASURE.DEPTH)
+            self.zed.retrieve_measure(depth_mat, sl.MEASURE.DEPTH_U16_MM)
 
         return rgb_mat, depth_mat
     
@@ -94,9 +96,9 @@ class Camera:
     def save_rgbd(self):
         img_path = self.s_path + '/rgb_image.png'
         d_path = self.s_path+'/true_depth.tiff'
-
-        plt.imsave(img_path, self.rgb)
-        plt.imsave(d_path, self.depth.get_data(), cmap='gray')
+        imsave(img_path, self.rgb)
+        #imwrite(d_path, self.depth.get_data())
+        imwrite(d_path, self.depth.numpy())
         print('Images of the workspace saved')
   
         return img_path, d_path
@@ -121,4 +123,4 @@ if __name__ == '__main__':
     run = get_runtime_camera_parameters(args = args, save_path=s_path)
 
     cam = Camera(initparameters= init, runtimeparameters=run, show_workspace= True, save_path=s_path)
-    cam.close_cam
+    cam.close_cam()

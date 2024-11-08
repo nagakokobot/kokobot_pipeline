@@ -16,16 +16,16 @@ def sort_args(args, options):
     filtered_options = {option for option in possible_options if args[option]!=None}
     return filtered_options
 
-def create_folder(name):
+def create_folder(sub_name, parent_name):
     #later has to be changed to handle better folder creation and check
     flag = False
-    c_path = f'project_aux/{name}'
+    c_path = f'{parent_name}/{sub_name}'
     if not os.path.exists(c_path):
         os.mkdir(c_path)
         print(f'Working folder is created with the name: {c_path}')
         flag = True
     else:
-        print(f'overwriting the folder {name}, which already exists')
+        print(f'overwriting the folder {sub_name}, which already exists in {parent_name}')
 
     return flag, c_path
 
