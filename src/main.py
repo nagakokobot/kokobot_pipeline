@@ -2,6 +2,8 @@ import argparse
 import sys
 import pyzed.sl as sl
 import torch
+import matplotlib.pyplot as plt
+import cv2
 from datetime import datetime
 
 from camera_parameters import get_camera_serial_number, get_init_camera_paramaters, get_runtime_camera_parameters
@@ -85,7 +87,7 @@ if __name__ == '__main__':
         inf1 = Inference(model = model.model, image= rgb, detector_version= args_dict['det_ver'], args = args_dict)
         pr = inf1.process_results()
         print(pr)
-        # in progress    
+ 
         ## TODO: work with the results and show/save them in respective folder
         if args_dict['det_ver'] == 'v5':
             inf1.res.show()
@@ -93,6 +95,12 @@ if __name__ == '__main__':
         if args_dict['det_ver'] == 'v8':  #check the color format
             _, r_path = create_folder('inference_result',s_path)
             for r in inf1.res:
-                r.show()
+                frm = r.plot()
+                plt.imshow(frm)
+                plt.show()
                 r.save(filename=s_path+'/inference_result_yolov8.png')
-        pr.to_csv(s_path+'/inference_result/detections.csv')
+        csv_path = s_path+'/inference_result/detections.csv'
+        pr.to_csv(csv_path)
+
+        # in progress   Grasp synthesis
+        

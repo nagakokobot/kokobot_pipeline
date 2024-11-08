@@ -1,11 +1,12 @@
-import pyzed.sl as sl
+#import pyzed.sl as sl
 import torch
 from ultralytics import YOLO
-from datetime import datetime
+#from datetime import datetime
 import pandas as pd
-from PIL import Image
+#from PIL import Image
 import numpy as np
 from typing import Union
+#from yolov5.utils.plots import output_to_target
 
 from helpers import get_model_path, sort_args
 from defaults import det_args
@@ -39,7 +40,8 @@ class Detector:
         '''
 
         if self.det_ver == 'v5':
-            model = torch.hub.load('ultralytics/yolov5', 'custom', path= model_path, device =self.device,  force_reload=True)
+            with torch.no_grad():
+                model = torch.hub.load('ultralytics/yolov5', 'custom', path= model_path, device =self.device,  force_reload=True)
         else:
             model = YOLO(model_path, task='detect').to(self.device)
 
@@ -148,8 +150,11 @@ if __name__ == '__main__':
     res2 = Inference(model = detector.model, image= image_path_720, detector_version= model_ver, args = args)
     pr2= res.process_results()
     print(pr2)
-
     detector.del_model()
+
+    #np_output = output_to_target(res.res[0])
+
+    
 
 
 
