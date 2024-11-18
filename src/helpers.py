@@ -30,7 +30,7 @@ def create_folder(sub_name, parent_name):
     return flag, c_path
 
 
-def get_model_path(task:str, version: str = 'v5'):
+def get_model_path(task:str, version: str = 'v5', model_name :str=None):
 
     '''
     Ensure that the pre trained models exists in the folder pre_trained_model. else, the excution stops.
@@ -55,18 +55,39 @@ def get_model_path(task:str, version: str = 'v5'):
     if not os.path.exists(parent_path):
         raise FileNotFoundError(f"The directory {parent_path} does not exist.")
     folders = os.listdir('pre_trained_models') 
-    if task == 'detection' and 'detection' in folders:
-        path = os.path.join(parent_path, 'detection', 'v5', 'best.pt')
-        if version == 'v8':
-            path = os.path.join(parent_path, 'detection', 'v8', 'best.pt')
-    #TODO: change the model name for the grasp synthesis when working on grasp generation
-    if task == 'grasp_synthesis' and 'grasp_synthesis' in folders:
-        path = os.path.join(parent_path, 'grasp_synhesis', 'model')
-
+    if task == 'detection' and task in folders:
+        d_model_name = 'best.pt'
+        if model_name:
+            try:
+               path = os.path.join(parent_path, task, version, model_name)
+               if not os.path.exists(path):
+                   raise FileNotFoundError(f'There is no file named {model_name} at {parent_path}/{task}/{version}')
+            except Exception as e:
+                print(f'cannot load the model specified {model_name} beacuse of the following error', '/n', e)
+                print('loading the default model for detection')
+                path = os.path.join(parent_path, task, version, d_model_name)
+        else:
+            path = os.path.join(parent_path, task, version, d_model_name)
+        #path = os.path.join(parent_path, 'detection', 'v5', 'best.pt')
+        #if version == 'v8':
+        #    path = os.path.join(parent_path, 'detection', 'v8', 'best.pt')
+    if task == 'grasp_synthesis' and task in folders:
+        d_model_name = 'd_grasp.pt'
+        if model_name:
+            try:
+                path = os.path.join(parent_path, task, model_name)
+                if not os.path.exists(path):
+                   raise FileNotFoundError(f'There is no file named {model_name} at {parent_path}/{task}')
+            except Exception as e:
+                print('loading the specified model failed: because of the following error', '/n', e)
+                print('loading the default model for grasp synthesis')
+                path = os.path.join(parent_path, task, d_model_name)
+        else:
+            path = os.path.join(parent_path, task, d_model_name)
     if path == '':
         raise FileNotFoundError('No path can be found for getting pre trained model, check all the saved model names are correct and in correct folders')
     if not os.path.exists(path) and path != '':
-        raise NameError(f'No path found "{path}" for {task} task')
+        raise NameError(f'No path found {path} for {task} task')
     return path
 
 
@@ -74,5 +95,6 @@ def get_model_path(task:str, version: str = 'v5'):
 
 if __name__ == '__main__':
      
-    path = get_model_path(task='detection', version='v5')
+    #path = get_model_path(task='detection', version='v5', model_name='custom')
+    path = get_model_path(task='grasp_synthesis', model_name='custom')
     print(type(path), path)

@@ -103,7 +103,7 @@ def get_init_camera_paramaters(args:dict, save_path:str = False,serial_number:in
         init_params.save(save_path+"/initParameters")
     return init_params
 
-def get_runtime_camera_parameters(args:dict, save_path:str):
+def get_runtime_camera_parameters(args:dict, save_path:str = None):
 
     runtime_params = sl.RuntimeParameters()
     d_runtime_params = camera_runtime_parameters()
@@ -117,13 +117,14 @@ def get_runtime_camera_parameters(args:dict, save_path:str):
             elif i == 'texture_confidence_threshold':
                 runtime_params.texture_confidence_threshold = args[i]
 
-    try: #important while testing as save wont overwrite .conf file for run time parameters
-        s_flag = runtime_params.save(save_path + '/runtimeParameters')
-        if not s_flag:
-            os.remove(save_path+'/runtimeParameters.yml')
-            runtime_params.save(save_path+ '/runtimeParameters')
-    except Exception as e:
-        print(e)
+    if save_path:
+        try: #important while testing as save wont overwrite .conf file for run time parameters
+            s_flag = runtime_params.save(save_path + '/runtimeParameters')
+            if not s_flag:
+                os.remove(save_path+'/runtimeParameters.yml')
+                runtime_params.save(save_path+ '/runtimeParameters')
+        except Exception as e:
+            print(e)
     
     return runtime_params
 

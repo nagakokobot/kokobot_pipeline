@@ -10,6 +10,7 @@ from camera_parameters import get_camera_serial_number, get_init_camera_paramate
 from helpers import create_folder
 from camera import Camera
 from detection import Detector, Inference
+from grasp_synthesis import load_grasping_model, Process_crops
 
 
 def parse_args():
@@ -33,6 +34,9 @@ def parse_args():
     #parser.add_argument('--iou', type=str, choices=range(0.01,1), help="threshold for Non-Maximum Suppression (NMS)")
     #parser.add_argument('--img_sz', type=str, default= 'v5', choices=['v5', 'v8'], help="select the version of yolo to be used for detection")
 
+    #for grasping
+    parser.add_argument('--grasp_model_name', type=str, help="Name of the model choosen to use for grasp synthesis")
+
 
     args = parser.parse_args()
 
@@ -53,7 +57,8 @@ if __name__ == '__main__':
             'det_conf': 0.75,
             'iou': 0.7,
             'det_ver':'v5',
-            'det_device':'cpu'}
+            'det_device':'cpu',
+            'grasp_model_name': 'd_grasp.pt'}
 
     ##main script runs here...
 
@@ -75,22 +80,25 @@ if __name__ == '__main__':
 
         init_params = get_init_camera_paramaters(args = args_dict, serial_number= serial_number, save_path = s_path)
         runtime_params = get_runtime_camera_parameters(args = args_dict, save_path=s_path)
-        cam = Camera(initparameters= init_params, runtimeparameters=runtime_params, save_path= s_path, show_workspace= True)
+        cam = Camera(initparameters= init_params, runtimeparameters=runtime_params, save_path= s_path, show_workspace= False)
         cam_obj = cam.zed
         rgb, depth, rgb_path, depth_path = cam.rgb, cam.depth, cam.rgb_path, cam.depth_path
         #close the camera object
         if cam_obj.is_opened():
             cam.close_cam()
 
-        model = Detector(detector_version = args_dict['det_ver'], device=args_dict['det_device'])
+        #model = Detector(detector_version = args_dict['det_ver'], device=args_dict['det_device'])
+        with Detector(detector_version = args_dict['det_ver'], device=args_dict['det_device']) as d_model:
+            model = d_model.model
 
-        inf1 = Inference(model = model.model, image= rgb, detector_version= args_dict['det_ver'], args = args_dict)
+        inf1 = Inference(model = model, image= rgb, detector_version= args_dict['det_ver'], args = args_dict)
         pr = inf1.process_results()
         print(pr)
+        d_model.del_model()
  
         ## TODO: work with the results and show/save them in respective folder
         if args_dict['det_ver'] == 'v5':
-            inf1.res.show()
+            #inf1.res.show()
             inf1.res.save(save_dir=s_path+'/inference_result')
         if args_dict['det_ver'] == 'v8':  #check the color format
             _, r_path = create_folder('inference_result',s_path)
@@ -103,4 +111,9 @@ if __name__ == '__main__':
         pr.to_csv(csv_path)
 
         # in progress   Grasp synthesis
+        grasp_model = load_grasping_model(model_name=args_dict['grasp_model_name'])
+        object_crops = Process_crops(rgb=rgb, depth=depth, coordinates=pr)
+        image_dict = object_crops.image_dict
+        object_crops.show_crops()
+
         

@@ -6,6 +6,7 @@ import pandas as pd
 #from PIL import Image
 import numpy as np
 from typing import Union
+import matplotlib
 #from yolov5.utils.plots import output_to_target
 
 from helpers import get_model_path, sort_args
@@ -28,10 +29,14 @@ class Detector:
             print(f'Using device: {self.device}')
             
         #get the path where the model is saved.
-        model_path = get_model_path(task = 'detection', version = self.det_ver)
-        print(model_path)
-        self.model = self.check_architecture(model_path)
+        self.model_path = get_model_path(task = 'detection', version = self.det_ver)
+        print(self.model_path)
+        #self.model = self.check_architecture(model_path)
 
+    def __enter__(self):
+        self._current_backend = matplotlib.get_backend()
+        self.model = self.check_architecture(self.model_path)
+        return self
 
     def check_architecture(self, model_path):
         '''
@@ -55,6 +60,9 @@ class Detector:
             torch.cuda.empty_cache()
         print('deleting model')
         del self.model
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        matplotlib.use(self._current_backend)
         
 
 class Inference:

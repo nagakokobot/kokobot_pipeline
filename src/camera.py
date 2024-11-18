@@ -23,22 +23,24 @@ class Camera:
             print('Camera object created for the camera serial number:', s_number)
             self.bgra, self.depth = self.get_mats()
             self.rgb = cv2.cvtColor(self.bgra.get_data(), cv2.COLOR_BGRA2RGB)
+            self.depth = self.depth.numpy()
+            #self.depth = self.depth.numpy()
         except Exception as e:
-            print('closing the cam object because of the following error:')
+            print('closing the cam object because of the following error in getting mats and np.arrays:')
             print(e)
             self.zed.close()
         try:
             if self.show_workspace:
                 self.show_wrkspc(serial_num =s_number)
         except Exception as e:
-            print('closing the cam object because of the following error:')
+            print('closing the cam object because of the following error in showing workspace:')
             print(e)
             self.zed.close()
         try:         
             if self.s_path != None: 
                 self.rgb_path, self.depth_path = self.save_rgbd()
         except Exception as e:
-            print('closing the cam object because of the following error:')
+            print('closing the cam object because of the following error in saving rgbd images:')
             print(e)
             self.zed.close()        
         cv2.destroyAllWindows()
@@ -82,7 +84,7 @@ class Camera:
 
         # Display the Depth image
         # Use a colormap to better visualize the depth data
-        depth_img = axes[1].imshow(self.depth.get_data(), cmap='gray')
+        depth_img = axes[1].imshow(self.depth, cmap='gray')
         axes[1].set_title('Depth Image')
         axes[1].axis('off')  # Hide axis
         fig.colorbar(depth_img, ax=axes[1], orientation='vertical', fraction=0.046, pad=0.04)
@@ -98,7 +100,7 @@ class Camera:
         d_path = self.s_path+'/true_depth.tiff'
         imsave(img_path, self.rgb)
         #imwrite(d_path, self.depth.get_data())
-        imwrite(d_path, self.depth.numpy())
+        imwrite(d_path, self.depth)
         print('Images of the workspace saved')
   
         return img_path, d_path
@@ -117,7 +119,7 @@ if __name__ == '__main__':
     args = {'camera_resolution': 'HD1080'}
     #          ,'camera_fps': 60,
     #      'depth_mode': 'PERFORMANCE'}
-    _, s_path = create_folder('test_folder1')
+    _, s_path = create_folder('test_folder1', 'project_aux')
 
     init = get_init_camera_paramaters(args=args, save_path=s_path) 
     run = get_runtime_camera_parameters(args = args, save_path=s_path)
