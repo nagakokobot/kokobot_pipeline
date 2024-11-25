@@ -10,7 +10,8 @@ from camera_parameters import get_camera_serial_number, get_init_camera_paramate
 from helpers import create_folder
 from camera import Camera
 from detection import Detector, Inference
-from grasp_synthesis import load_grasping_model, Process_crops
+from grasp_synthesis import load_grasping_model, Process_crops, pred_grasps_and_display
+ 
 
 
 def parse_args():
@@ -110,10 +111,13 @@ if __name__ == '__main__':
         csv_path = s_path+'/inference_result/detections.csv'
         pr.to_csv(csv_path)
 
-        # in progress   Grasp synthesis
+        # in progress Grasp synthesis
         grasp_model = load_grasping_model(model_name=args_dict['grasp_model_name'])
         object_crops = Process_crops(rgb=rgb, depth=depth, coordinates=pr)
         image_dict = object_crops.image_dict
         object_crops.show_crops()
+
+        image_dict = pred_grasps_and_display(model = grasp_model, image_dict= image_dict, display_images= True)
+        
 
         

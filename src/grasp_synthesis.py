@@ -11,6 +11,8 @@ from PIL import Image
 
 from helpers import get_model_path
 from ggcnn.utils.dataset_processing.image import Image, DepthImage
+from ggcnn.models.common import post_process_output
+from ggcnn.utils.dataset_processing.evaluation import plot_output
 
 
 #Loading the model(function)
@@ -77,7 +79,7 @@ class Process_crops:
 
     def process_image(self, image, tup:tuple):
         image.crop(top_left=(tup[1] , tup[0]), bottom_right=(tup[3], tup[2]), resize=(300,300))
-        image.normalise()
+        image.normalise()  #for [-1,1]
         #transpose the imgae only when there are three channels in the image
         if len(image.shape) == 3:
             image.img = image.img.transpose((2, 0, 1))
@@ -108,7 +110,7 @@ class Process_crops:
                 #print(rgb_image, '/n', rgb_image.shape)
                 depth_image = data['depth_object']
                 if rows ==1:
-                    
+                    """ 
                     ax[0].imshow(rgb_image)
                     ax[0].set_title(f"{obj}_{self.coordinates.loc[i,'name']}")
                     ax[0].axis('off')
@@ -117,7 +119,7 @@ class Process_crops:
                     ax[1].set_title(f"{obj}_{self.coordinates.loc[i,'name']}")
                     ax[1].axis('off')
                     """
-                    try: #try thios method and delete the unnecessary blocks for rows = 1
+                    try:
                         ax = np.expand_dims(ax, axis=0)
                     except Exception as e:
                         print(e)
@@ -130,7 +132,7 @@ class Process_crops:
                         ax[i,1].imshow(depth_image, cmap = 'gray')
                         ax[i,1].set_title(f"{obj}_{self.coordinates.loc[i,'name']}")
                         ax[i,1].axis('off')   
-                    """ 
+                  #  """ 
                 else:
                     ax[i,0].imshow(rgb_image)
                     ax[i,0].set_title(f"{obj}_{self.coordinates.loc[i,'name']}")
@@ -143,80 +145,22 @@ class Process_crops:
             plt.show()
         pass
 
+def pred_grasps_and_display(model, image_dict, display_images:bool = False):
+    
+    for i, (obj, itype) in enumerate(image_dict.items()):
+        with torch.no_grad():
+            model_output = model(itype['tensor'])
+        q_img, ang_img, width_img = post_process_output(model_output[0], model_output[1],
+                                                    model_output[2], model_output[3])
+        image_dict[obj].update([('q_img',q_img),('ang_img',ang_img),('width_img',width_img)])
+        if display_images:
+            plot_output(rgb_img= itype['rgb_object'].img.transpose(1,2,0), depth_img= itype['depth_object'], 
+                grasp_q_img= q_img, grasp_angle_img=ang_img, grasp_width_img=width_img, no_grasps=3)
+
+    
+    return image_dict
+
 
 if __name__ == '__main__':
 
-    source = 'path'
-    #source = None
-
-    import pyzed.sl as sl
-    from camera import Camera
-    from helpers import create_folder
-    from camera_parameters import get_init_camera_paramaters, get_runtime_camera_parameters
-    from detection import Detector, Inference
-    from ggcnn.models.common import post_process_output
-    from ggcnn.utils.dataset_processing.evaluation import plot_output 
-
-    args_dict = {'camera_resolution': 'HD1080',
-        'det_conf': 0.75,
-        'iou': 0.7,
-        'det_ver':'v5',
-        'det_device':'cpu',
-        'grasp_model_name': 'd_grasp.pt'}
-
-    flag, s_path = create_folder(sub_name='test_folder1', parent_name='project_aux')
-    init_params = get_init_camera_paramaters(args = args_dict, save_path = s_path)
-    runtime_params = get_runtime_camera_parameters(args = args_dict, save_path=s_path)
-    #get the mat from the class
-    cam = Camera(initparameters= init_params, runtimeparameters=runtime_params, save_path= s_path, show_workspace= False)
-    cam.close_cam()
-    rgb,depth, img_path, depth_path  = cam.rgb, cam.depth, cam.rgb_path, cam.depth_path
-    #plt.imshow(rgb)
-    #plt.show(block = False)
-    model = Detector(detector_version = args_dict['det_ver'])
-    #plt.imshow(rgb)
-    #plt.show(block = False)
-
-    inf = Inference(model = model.model, image= rgb, detector_version= args_dict['det_ver'], args = args_dict)
-    #plt.imshow(rgb)
-    #plt.show(block = False)
-    
-    pr = inf.process_results()
-    _, r_path = create_folder('inference_result',s_path)
-    inf.res.save(save_dir = r_path)
-    csv_path = r_path+'/detections.csv'
-    pr.to_csv(csv_path)
-    if source == 'path':
-        rgb = img_path
-        depth =  depth_path
-        pr = csv_path
-
-    #plt.imshow(rgb)
-    #plt.show(block = False)
-    image_dict = Process_crops(rgb =rgb, depth= depth, coordinates= pr)
-    #image_dict.show_crops()
-    #plt.imread(rgb)
-    #plt.show(block = False)
-    
-    #plt.show()
-
-    '''
-    if image_dict:
-            #fig, axs = plt.subplots(1, 2, figsize=(10,10),dpi = 100)
-        test_rgb = image_dict['object_1']['rgb'].transpose(1,2,0)
-        plt.imshow(test_rgb)
-        #plt.imshow(image_dict['object_1']['depth'].img, cmap = 'gray')
-        plt.show()
-    '''
-
-    grasp_model = load_grasping_model()
-    with torch.no_grad():
-        pred_out = grasp_model(image_dict.image_dict['object_1']['tensor'])
-    
-    q_img, ang_img, width_img = post_process_output(pred_out[0], pred_out[1],
-                                                        pred_out[2], pred_out[3])
-    
-    plot_output(rgb_img= image_dict.image_dict['object_1']['rgb'].transpose(1,2,0), 
-                depth_img= image_dict.image_dict['object_1']['depth'], 
-                grasp_q_img= q_img, grasp_angle_img=ang_img, 
-                grasp_width_img=width_img, no_grasps=3)
+    model = load_grasping_model()
