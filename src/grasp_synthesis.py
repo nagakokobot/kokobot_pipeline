@@ -8,11 +8,15 @@ import matplotlib.pyplot as plt
 from ggcnn.models.ggcnn2 import GGCNN2
 
 from PIL import Image
+#for filling the nan and inf values
+from scipy import interpolate
+from scipy.ndimage import generic_filter, gaussian_filter
 
 from helpers import get_model_path
 from ggcnn.utils.dataset_processing.image import Image, DepthImage
 from ggcnn.models.common import post_process_output
 from ggcnn.utils.dataset_processing.evaluation import plot_output
+from ggcnn.utils.dataset_processing.grasp import detect_grasps
 
 
 #Loading the model(function)
@@ -79,6 +83,8 @@ class Process_crops:
 
     def process_image(self, image, tup:tuple):
         image.crop(top_left=(tup[1] , tup[0]), bottom_right=(tup[3], tup[2]), resize=(300,300))
+        if image.img.ndim == 2:
+          image.img = fill_nan(image.img, mode = 'linear')
         image.normalise()  #for [-1,1]
         #transpose the imgae only when there are three channels in the image
         if len(image.shape) == 3:
@@ -107,43 +113,26 @@ class Process_crops:
         if rows>0:
             for i, (obj, data) in enumerate(self.image_dict.items()):
                 rgb_image = data['rgb_object'].transpose(1, 2, 0)  # Transpose back to HWC format for display
-                #print(rgb_image, '/n', rgb_image.shape)
                 depth_image = data['depth_object']
                 if rows ==1:
-                    """ 
-                    ax[0].imshow(rgb_image)
-                    ax[0].set_title(f"{obj}_{self.coordinates.loc[i,'name']}")
-                    ax[0].axis('off')
-                    
-                    ax[1].imshow(depth_image)
-                    ax[1].set_title(f"{obj}_{self.coordinates.loc[i,'name']}")
-                    ax[1].axis('off')
-                    """
                     try:
                         ax = np.expand_dims(ax, axis=0)
                     except Exception as e:
-                        print(e)
-                    finally:
-                        print(i)
-                        ax[i,0].imshow(rgb_image)
-                        ax[i,0].set_title(f"{obj}_{self.coordinates.loc[i,'name']}")
-                        ax[i,0].axis('off')
+                        print(e) 
+                ax[i,0].imshow(rgb_image)
+                ax[i,0].set_title(f"{obj}_{self.coordinates.loc[i,'name']}")
+                ax[i,0].axis('off')
 
-                        ax[i,1].imshow(depth_image, cmap = 'gray')
-                        ax[i,1].set_title(f"{obj}_{self.coordinates.loc[i,'name']}")
-                        ax[i,1].axis('off')   
-                  #  """ 
-                else:
-                    ax[i,0].imshow(rgb_image)
-                    ax[i,0].set_title(f"{obj}_{self.coordinates.loc[i,'name']}")
-                    ax[i,0].axis('off')
-
-                    ax[i,1].imshow(depth_image, cmap = 'gray')
-                    ax[i,1].set_title(f"{obj}_{self.coordinates.loc[i,'name']}")
-                    ax[i,1].axis('off')
+                ax[i,1].imshow(depth_image, cmap = 'gray')
+                ax[i,1].set_title(f"{obj}_{self.coordinates.loc[i,'name']}")
+                ax[i,1].axis('off')
             plt.tight_layout()
             plt.show()
         pass
+    
+    def append_crops(self):
+        
+        pass 
 
 def pred_grasps_and_display(model, image_dict, display_images:bool = False):
     
@@ -153,13 +142,61 @@ def pred_grasps_and_display(model, image_dict, display_images:bool = False):
         q_img, ang_img, width_img = post_process_output(model_output[0], model_output[1],
                                                     model_output[2], model_output[3])
         image_dict[obj].update([('q_img',q_img),('ang_img',ang_img),('width_img',width_img)])
-        if display_images:
-            plot_output(rgb_img= itype['rgb_object'].img.transpose(1,2,0), depth_img= itype['depth_object'], 
-                grasp_q_img= q_img, grasp_angle_img=ang_img, grasp_width_img=width_img, no_grasps=3)
+        if display_images: # returns the grasps for only one object, make it return for multiple objects
+            grasps = plot_output(rgb_img= itype['rgb_object'].img.transpose(1,2,0), depth_img= itype['depth_object'], 
+                grasp_q_img= q_img, grasp_angle_img=ang_img, grasp_width_img=width_img, no_grasps=3, return_grasps= True)
+        else:
+            grasps = detect_grasps(q_img, ang_img, width_img=width_img, no_grasps=3)
 
     
-    return image_dict
+    return image_dict, grasps
 
+
+def fill_nan(image, mode):
+    if mode == 'zero':
+        filled_image = image.copy()
+        filled_image[np.isnan(filled_image) | ~np.isfinite(filled_image)] = 0
+        return filled_image
+    
+    if mode == 'linear':
+        x, y = np.meshgrid(np.arange(image.shape[1]), np.arange(image.shape[0]))
+        mask = np.isfinite(image)
+        return interpolate.griddata((x[mask], y[mask]),image[mask],
+                (x, y),
+                method='linear')
+    if mode == 'mean':
+      nan_mask = np.isnan(image) | ~np.isfinite(image)
+      filled_image = image.copy()
+      filled_image[nan_mask] = 0  # Replace NaNs temporarily
+      mean_filter = generic_filter(filled_image, np.nanmean, size=10, mode='constant')
+      filled_image[nan_mask] = mean_filter[nan_mask]
+      return filled_image
+    if mode=='gaussian':
+        nan_mask = np.isnan(image) | ~np.isfinite(image)
+        filled_image = image.copy()
+        filled_image[nan_mask] = 0
+        blurred_image = gaussian_filter(filled_image, sigma=2)
+        filled_image[nan_mask] = blurred_image[nan_mask]
+        return filled_image
+
+
+def linear_interpolation(image):
+    x, y = np.meshgrid(np.arange(image.shape[1]), np.arange(image.shape[0]))
+    mask = np.isfinite(image)
+    return interpolate.griddata(
+        (x[mask], y[mask]),
+        image[mask],
+        (x, y),
+        method='linear'
+    )
+
+def fill_nan_with_mean(image):
+    nan_mask = np.isnan(image) | ~np.isfinite(image)
+    filled_image = image.copy()
+    filled_image[nan_mask] = 0  # Replace NaNs temporarily
+    mean_filter = generic_filter(filled_image, np.nanmean, size=10, mode='constant')
+    filled_image[nan_mask] = mean_filter[nan_mask]
+    return filled_image
 
 if __name__ == '__main__':
 

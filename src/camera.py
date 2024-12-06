@@ -21,10 +21,11 @@ class Camera:
         try:
             s_number = self.zed.get_camera_information().serial_number
             print('Camera object created for the camera serial number:', s_number)
-            self.bgra, self.depth = self.get_mats()
-            self.rgb = cv2.cvtColor(self.bgra.get_data(), cv2.COLOR_BGRA2RGB)
-            self.depth = self.depth.numpy()
-            #self.depth = self.depth.numpy()
+            self.bgra_mat, self.depth_mat = sl.Mat(), sl.Mat()
+            self.get_mats()
+            self.rgb = cv2.cvtColor(self.bgra_mat.get_data(), cv2.COLOR_BGRA2RGB)
+            self.depth = self.depth_mat.numpy()
+            #self.depth = self.depth_mat.get_data()
         except Exception as e:
             print('closing the cam object because of the following error in getting mats and np.arrays:')
             print(e)
@@ -59,15 +60,15 @@ class Camera:
         return cam_object
     
     def get_mats(self):
-        rgb_mat = sl.Mat()
-        depth_mat = sl.Mat()
+        #rgb_mat = sl.Mat()
+        #depth_mat = sl.Mat()
 
         new_frame_err = self.zed.grab(self.runtimepara)
         if new_frame_err == sl.ERROR_CODE.SUCCESS:
-            self.zed.retrieve_image(rgb_mat, sl.VIEW.LEFT)
-            self.zed.retrieve_measure(depth_mat, sl.MEASURE.DEPTH_U16_MM)
-
-        return rgb_mat, depth_mat
+            self.zed.retrieve_image(self.bgra_mat, sl.VIEW.LEFT)
+            self.zed.retrieve_measure(self.depth_mat, sl.MEASURE.DEPTH)
+        
+        #return rgb_mat, depth_mat
     
     def show_wrkspc(self, serial_num = int):
         '''

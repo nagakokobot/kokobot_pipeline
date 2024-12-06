@@ -16,7 +16,8 @@ def camera_init_parameters():
                      'depth_mode':{'ULTRA':sl.DEPTH_MODE.ULTRA},
                      'coordinate_units':{'mm':sl.UNIT.MILLIMETER},
                      'coordinate_system':{'IMAGE':sl.COORDINATE_SYSTEM.IMAGE},
-                     'depth_minimum_distance':-1,
+                     'depth_minimum_distance':1000,
+                     'depth_maximum_distance': 1500
                      }
 
     parms_mapping = {'camera_resolution': {'HD1080': sl.RESOLUTION.HD1080},

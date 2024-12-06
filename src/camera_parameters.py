@@ -99,6 +99,15 @@ def get_init_camera_paramaters(args:dict, save_path:str = False,serial_number:in
                 init_params.depth_mode = y
             elif i == 'coordinate_units':
                 init_params.coordinate_units = y
+            elif i == 'depth_minimum_distance':
+                init_params.depth_minimum_distance = y
+            elif i == 'depth_maximum_distance':
+                init_params.depth_maximum_distance = y
+        if 'depth_minimum_distance' not in new_args_dict:
+            init_params.depth_minimum_distance = d_init_params['depth_minimum_distance']
+        if 'depth_maximum_distance' not in new_args_dict:
+            init_params.depth_maximum_distance = d_init_params['depth_maximum_distance']
+
     if save_path:
         init_params.save(save_path+"/initParameters")
     return init_params

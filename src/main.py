@@ -1,5 +1,6 @@
 import argparse
 import sys
+sys.path.append('/home/student/naga/kokobot_pipeline')  #to run from terminal
 import pyzed.sl as sl
 import torch
 import matplotlib.pyplot as plt
@@ -81,18 +82,18 @@ if __name__ == '__main__':
 
         init_params = get_init_camera_paramaters(args = args_dict, serial_number= serial_number, save_path = s_path)
         runtime_params = get_runtime_camera_parameters(args = args_dict, save_path=s_path)
-        cam = Camera(initparameters= init_params, runtimeparameters=runtime_params, save_path= s_path, show_workspace= False)
+        cam = Camera(initparameters= init_params, runtimeparameters=runtime_params, save_path= s_path, show_workspace= True)
         cam_obj = cam.zed
         rgb, depth, rgb_path, depth_path = cam.rgb, cam.depth, cam.rgb_path, cam.depth_path
         #close the camera object
         if cam_obj.is_opened():
             cam.close_cam()
-
+        del cam
         #model = Detector(detector_version = args_dict['det_ver'], device=args_dict['det_device'])
         with Detector(detector_version = args_dict['det_ver'], device=args_dict['det_device']) as d_model:
             model = d_model.model
 
-        inf1 = Inference(model = model, image= rgb, detector_version= args_dict['det_ver'], args = args_dict)
+        inf1 = Inference(model = model, image= rgb.copy(), detector_version= args_dict['det_ver'], args = args_dict)
         pr = inf1.process_results()
         print(pr)
         d_model.del_model()
@@ -117,7 +118,7 @@ if __name__ == '__main__':
         image_dict = object_crops.image_dict
         object_crops.show_crops()
 
-        image_dict = pred_grasps_and_display(model = grasp_model, image_dict= image_dict, display_images= True)
-        
+        image_dict, grasps = pred_grasps_and_display(model = grasp_model, image_dict= image_dict, display_images= True)
+        print(grasps)
 
         
