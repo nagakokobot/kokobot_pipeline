@@ -71,19 +71,22 @@ def get_model_path(task:str, version: str = 'v5', model_name :str=None):
         #path = os.path.join(parent_path, 'detection', 'v5', 'best.pt')
         #if version == 'v8':
         #    path = os.path.join(parent_path, 'detection', 'v8', 'best.pt')
-    if task == 'grasp_synthesis' and task in folders:
-        d_model_name = 'd_grasp.pt'
-        if model_name:
-            try:
-                path = os.path.join(parent_path, task, model_name)
-                if not os.path.exists(path):
-                   raise FileNotFoundError(f'There is no file named {model_name} at {parent_path}/{task}')
-            except Exception as e:
-                print('loading the specified model failed: because of the following error', '/n', e)
-                print('loading the default model for grasp synthesis')
-                path = os.path.join(parent_path, task, d_model_name)
-        else:
-            path = os.path.join(parent_path, task, d_model_name)
+    else:
+      if task == 'grasp_synthesis' and task in folders:
+          d_model_name = 'd_grasp.pt'
+      if task == 'segmentation'and task in folders:
+          d_model_name = 'instance_segmentation.pt'
+      if model_name and path == '':
+          try:
+              path = os.path.join(parent_path, task, model_name)
+              if not os.path.exists(path):
+                  raise FileNotFoundError(f'There is no file named {model_name} at {parent_path}/{task}')
+          except Exception as e:
+              print('loading the specified model failed: because of the following error', '/n', e)
+              print('loading the default model for grasp synthesis')
+              path = os.path.join(parent_path, task, d_model_name)
+      else:
+          path = os.path.join(parent_path, task, d_model_name)
     if path == '':
         raise FileNotFoundError('No path can be found for getting pre trained model, check all the saved model names are correct and in correct folders')
     if not os.path.exists(path) and path != '':

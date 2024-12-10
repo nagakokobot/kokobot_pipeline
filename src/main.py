@@ -82,9 +82,9 @@ if __name__ == '__main__':
 
         init_params = get_init_camera_paramaters(args = args_dict, serial_number= serial_number, save_path = s_path)
         runtime_params = get_runtime_camera_parameters(args = args_dict, save_path=s_path)
-        cam = Camera(initparameters= init_params, runtimeparameters=runtime_params, save_path= s_path, show_workspace= True)
+        cam = Camera(initparameters= init_params, runtimeparameters=runtime_params, save_path= s_path, show_workspace= False)
         cam_obj = cam.zed
-        rgb, depth, rgb_path, depth_path = cam.rgb, cam.depth, cam.rgb_path, cam.depth_path
+        rgb, depth_cam, rgb_path, depth_path = cam.rgb, cam.depth.copy(), cam.rgb_path, cam.depth_path
         #close the camera object
         if cam_obj.is_opened():
             cam.close_cam()
@@ -112,13 +112,14 @@ if __name__ == '__main__':
         csv_path = s_path+'/inference_result/detections.csv'
         pr.to_csv(csv_path)
 
-        # in progress Grasp synthesis
+        
         grasp_model = load_grasping_model(model_name=args_dict['grasp_model_name'])
-        object_crops = Process_crops(rgb=rgb, depth=depth, coordinates=pr)
+        object_crops = Process_crops(rgb=rgb, depth=depth_cam, coordinates=pr, include_segmentation = True)
         image_dict = object_crops.image_dict
         object_crops.show_crops()
 
         image_dict, grasps = pred_grasps_and_display(model = grasp_model, image_dict= image_dict, display_images= True)
-        print(grasps)
+        print(grasps)   
 
-        
+        # in progress segmentation
+         
