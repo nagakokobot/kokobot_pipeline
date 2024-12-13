@@ -4,6 +4,7 @@ from typing import Union
 import numpy as np
 import pandas as pd
 from imageio.v2 import imread
+from skimage.transform import resize
 import matplotlib.pyplot as plt
 from ggcnn.models.ggcnn2 import GGCNN2
 
@@ -13,6 +14,7 @@ from scipy import interpolate
 from scipy.ndimage import generic_filter, gaussian_filter
 
 from helpers import get_model_path
+from segment import Segment
 from ggcnn.utils.dataset_processing.image import Image, DepthImage
 from ggcnn.models.common import post_process_output
 from ggcnn.utils.dataset_processing.evaluation import plot_output
@@ -36,10 +38,13 @@ class Process_crops:
     coordinates (optional): Path to the csv file generated, which containes the coordinates or pd.dataframe containing the detections
     '''
     #image_dict = {}
-    def __init__(self,rgb:Union[str, np.ndarray], depth:Union[str, np.ndarray], coordinates: Union[str, pd.DataFrame]):
+    def __init__(self,rgb:Union[str, np.ndarray]=None, depth:Union[str, np.ndarray]=None, coordinates: Union[str, pd.DataFrame]=None, include_segmentation:bool= True):
         self.rgb = rgb
         self.depth = depth
         self.coordinates = coordinates
+        self.include_segmentation = include_segmentation
+        if self.include_segmentation:
+            self.seg_model = Segment()
         if isinstance(self.rgb, str):
             self.rgb = imread(self.rgb)
         if isinstance(self.depth, str):
@@ -47,7 +52,10 @@ class Process_crops:
         if isinstance(self.coordinates, str):
             self.coordinates = pd.read_csv(self.coordinates, header=0,index_col=0)
         #self.image_dict.clear()
-        self.image_dict = self.get_image_crops()
+        if not self.rgb is None:
+          self.image_dict = self.get_image_crops()
+        else:
+            pass
         #print(self.image_dict)
     def get_image_crops(self):
         image_dict = {}
@@ -64,16 +72,19 @@ class Process_crops:
                                                 int(self.coordinates.iloc[i,3]))
                     rgb_i = Image(self.rgb)
                     depth_i = DepthImage(self.depth)
-                    self.process_image(image = rgb_i, tup = (xmin, ymin, xmax, ymax))
-                    self.process_image(image = depth_i, tup = (xmin, ymin, xmax, ymax))
-                    #rgb_image_i = self.process_image(image = rgb_i, tup = (xmin, ymin, xmax, ymax))
-                    #depth_image_i = self.process_image(image = depth_i, tup = (xmin, ymin, xmax, ymax))
+                    
                     image_dict[obj] = {}
-                    image_dict[obj].update([('rgb_object', rgb_i),('depth_object', depth_i)])
-                    #image_dict[obj].update([('rgb', rgb_image_i),('depth', depth_image_i)])
-                    #plt.imshow(self.rgb)
-                    #plt.show()
-                    #tensor_i = self.make_tensors(fin_rgb=rgb_image_i, fin_depth= depth_image_i)
+                    for i, crop_object in enumerate([rgb_i, depth_i]):
+                      crop_object.crop(top_left=(ymin, xmin), bottom_right=(ymax,xmax), resize=(300,300))
+                      #if i == 0:
+                        #image_dict[obj].update([('org_rgb', rgb_i.img.copy())])
+                     # else:
+                        #image_dict[obj].update([('org_depth', depth_i.img.copy())])
+                      segmentation_result = self.process_image(image = crop_object)
+                      if segmentation_result:
+                          image_dict[obj].update([('seg_res', segmentation_result)])
+                    #self.process_image(image = depth_i, tup = (xmin, ymin, xmax, ymax), segmentation= self.include_segmentation)
+                    image_dict[obj].update([('formatted_crop_rgb', rgb_i),('formatted_crop_depth', depth_i)])
                     tensor_i = self.make_tensors(fin_rgb=rgb_i.img, fin_depth= depth_i.img)
                     image_dict[obj].update([('tensor', tensor_i)])
                     del rgb_i, depth_i
@@ -81,8 +92,11 @@ class Process_crops:
         return image_dict
     
 
-    def process_image(self, image, tup:tuple):
-        image.crop(top_left=(tup[1] , tup[0]), bottom_right=(tup[3], tup[2]), resize=(300,300))
+    def process_image(self, image):
+        #image.crop(top_left=(tup[1] , tup[0]), bottom_right=(tup[3], tup[2]), resize=(300,300))
+        seg_res = None
+        if len(image.shape) == 3 and self.include_segmentation:
+            seg_res = self.seg_model.predict(image = image.img.copy())
         if image.img.ndim == 2:
           image.img = fill_nan(image.img, mode = 'linear')
         image.normalise()  #for [-1,1]
@@ -90,9 +104,17 @@ class Process_crops:
         if len(image.shape) == 3:
             image.img = image.img.transpose((2, 0, 1))
         #image_copy = np.copy(image.img)
-        return image
+        if self.include_segmentation:
+            return seg_res
+        else:
+          return None
     
     def make_tensors(self, fin_rgb, fin_depth):
+        '''
+        fin_rgb.shape: (3,300,300)
+        fin_depth.shape : (300,300)
+        output- tensor.shape: ([1,4, 300,300])
+        '''
         tensor = self.numpy_to_torch(np.concatenate(
         (np.expand_dims(fin_depth,0),fin_rgb), 0
         ))
@@ -112,30 +134,29 @@ class Process_crops:
         fig, ax = plt.subplots(rows, 2, figsize=(10, 5))
         if rows>0:
             for i, (obj, data) in enumerate(self.image_dict.items()):
-                rgb_image = data['rgb_object'].transpose(1, 2, 0)  # Transpose back to HWC format for display
-                depth_image = data['depth_object']
+                rgb_image = data['formatted_crop_rgb'].transpose(1, 2, 0)  # Transpose back to HWC format for display
+                depth_image = data['formatted_crop_depth']
                 if rows ==1:
                     try:
                         ax = np.expand_dims(ax, axis=0)
                     except Exception as e:
                         print(e) 
                 ax[i,0].imshow(rgb_image)
-                ax[i,0].set_title(f"{obj}_{self.coordinates.loc[i,'name']}")
+                ax[i,0].set_title(f"{obj}_rgb")
                 ax[i,0].axis('off')
 
                 ax[i,1].imshow(depth_image, cmap = 'gray')
-                ax[i,1].set_title(f"{obj}_{self.coordinates.loc[i,'name']}")
+                ax[i,1].set_title(f"{obj}_depth")
                 ax[i,1].axis('off')
             plt.tight_layout()
             plt.show()
         pass
     
-    def append_crops(self):
-        
-        pass 
 
 def pred_grasps_and_display(model, image_dict, display_images:bool = False):
-    
+    '''
+    Works without segmentation enabled
+    '''
     for i, (obj, itype) in enumerate(image_dict.items()):
         with torch.no_grad():
             model_output = model(itype['tensor'])
@@ -143,13 +164,80 @@ def pred_grasps_and_display(model, image_dict, display_images:bool = False):
                                                     model_output[2], model_output[3])
         image_dict[obj].update([('q_img',q_img),('ang_img',ang_img),('width_img',width_img)])
         if display_images: # returns the grasps for only one object, make it return for multiple objects
-            grasps = plot_output(rgb_img= itype['rgb_object'].img.transpose(1,2,0), depth_img= itype['depth_object'], 
+            grasps = plot_output(rgb_img= itype['formatted_crop_rgb'].transpose(1,2,0), depth_img= itype['formatted_crop_depth'], 
                 grasp_q_img= q_img, grasp_angle_img=ang_img, grasp_width_img=width_img, no_grasps=3, return_grasps= True)
         else:
             grasps = detect_grasps(q_img, ang_img, width_img=width_img, no_grasps=3)
 
     
     return image_dict, grasps
+
+def make_tensors_and_predict_grasps(image_dict=None, grasp_model=None):
+
+    #grasps_dict = {}
+    new_tens = Process_crops()
+    for obj,itype in image_dict.items():
+        itype['grasps'] = {}
+        grasps_dict = {'pipeline_grasp':{}}
+        p_grasp = predict_grasp_on_tensor(model = grasp_model,tensor=itype['tensor'])
+        grasps_dict.update([('pipeline_grasp',p_grasp)])
+        seg_dict = itype['segmentation_masks']
+        if seg_dict is not None:
+          for depth_name, depth in seg_dict.items():
+              grasps_dict[depth_name] = {}
+              temp_tensor = new_tens.make_tensors(fin_rgb=itype['formatted_crop_rgb'], fin_depth=depth)
+              '''
+              with torch.no_grad():
+                temp_model_output = grasp_model(temp_tensor)
+              q_img, ang_img, width_img = post_process_output(temp_model_output[0], temp_model_output[1],
+                                                      temp_model_output[2], temp_model_output[3])
+              temp_grasps = detect_grasps(q_img, ang_img, width_img=width_img, no_grasps=3)
+              temp_grasps = {'q_img':q_img, 'ang_img':ang_img,
+                             'width_img':width_img, 'grasps':temp_grasps}
+              '''
+              temp_grasps = predict_grasp_on_tensor(model=grasp_model, tensor = temp_tensor)
+              grasps_dict.update([(depth_name,temp_grasps)])
+        else:
+            print(f'The segmentation masks for {obj} are empty')
+        itype.update([('grasps',grasps_dict)])
+    return image_dict
+
+def predict_grasp_on_tensor(model, tensor):
+    with torch.no_grad():
+        op = model(tensor)
+    q_img, ang_img, width_img = post_process_output(op[0], op[1],
+                                                    op[2], op[3])
+    grasps = detect_grasps(q_img, ang_img, width_img=width_img, no_grasps=3)
+    grasps = {'q_img':q_img, 'ang_img':ang_img,
+                    'width_img':width_img, 'grasps':grasps}
+
+
+    return grasps
+
+
+def display_grasps_per_object(image_dict):
+    for obj, itype in image_dict.items():
+        obj_grasp_fig = plt.figure(figsize=(10,10))
+        obj_grasp_fig.suptitle(obj)
+        grasps_dict = itype['grasps']
+        pos1 = 0
+        for i, (depth_name, grasp) in enumerate(grasps_dict.items()):
+          pos2  = pos1+i+1
+          if depth_name == 'pipeline_grasp':
+            depth_img = itype['formatted_crop_depth']
+          else:
+            depth_img = itype['segmentation_masks'][depth_name]
+          ax = obj_grasp_fig.add_subplot(len(grasps_dict), 2,pos2)
+          ax.imshow(itype['seg_res'][0].orig_img)
+          ax.set_title('grasps')
+          for g in grasp['grasps']:
+            g.plot(ax)
+          ax2 = obj_grasp_fig.add_subplot(len(grasps_dict),2,pos2+1)
+          ax2.imshow(depth_img)
+          ax2.set_title(depth_name)
+          pos1+=1
+    plt.show()
+    pass
 
 
 def fill_nan(image, mode):
@@ -200,4 +288,56 @@ def fill_nan_with_mean(image):
 
 if __name__ == '__main__':
 
-    model = load_grasping_model()
+  from segment import get_masks_from_seg_res
+  image_path = 'project_aux/test_folder1/rgb_image.png'
+  depth_path = 'project_aux/test_folder1/true_depth.tiff'
+  coordinates = 'project_aux/test_folder1/inference_result/detections.csv'
+
+
+  model = load_grasping_model()
+  crops = Process_crops(rgb = image_path, depth = depth_path, coordinates= coordinates, include_segmentation= True)
+  img_dict = crops.image_dict
+  img_dict = get_masks_from_seg_res(image_dict=img_dict)
+  #print('here',img_dict[list(img_dict.keys())[0]].keys())
+
+  '''
+  hammer_dict = img_dict['object_1_Hammer']
+  print(hammer_dict.keys())
+  #crops.show_crops()
+
+  seg_res = hammer_dict['seg_res']
+  for res in seg_res:
+      cls_names = res.names
+      for i, m in enumerate(res):
+        m_i= m.masks.data.cpu().numpy()
+        label = cls_names[m.boxes.cls.tolist().pop()]
+        m_i_resize = resize(np.squeeze(m_i.transpose(1,2,0)), (300,300), preserve_range= True).astype(hammer_dict['formatted_crop_rgb'].img.dtype)
+        temp_img = hammer_dict['formatted_crop_depth'] * m_i_resize
+        if label in hammer_dict.keys():
+          label = label+str(i)
+        hammer_dict.update([(label,temp_img)])
+  print(hammer_dict.keys())
+  which_seg = 'metal_part2'
+  new_tensor = crops.make_tensors(fin_rgb=hammer_dict['formatted_crop_rgb'].img, fin_depth=hammer_dict[which_seg])
+  #plt.imshow(hammer_dict['metal_part'])
+  #plt.show()
+  use_seg = True
+  if use_seg:
+    for i, (obj, itype) in enumerate(img_dict.items()):
+      with torch.no_grad():
+          model_output = model(new_tensor)
+      q_img, ang_img, width_img = post_process_output(model_output[0], model_output[1],
+                                                  model_output[2], model_output[3])
+      grasps = plot_output(rgb_img=itype['formatted_crop_rgb'].transpose(1,2,0), depth_img= itype[which_seg], 
+              grasp_q_img= q_img, grasp_angle_img=ang_img, grasp_width_img=width_img, no_grasps=3, return_grasps= True)
+      grasps = detect_grasps(q_img, ang_img, width_img=width_img, no_grasps=3)
+  else:
+    image_dict, grasps = pred_grasps_and_display(model = model, image_dict= crops.image_dict, display_images= True)
+  '''
+
+  img_dict = make_tensors_and_predict_grasps(image_dict= img_dict,grasp_model=model)
+  #obj_1_keys = img_dict[list(img_dict.keys())[0]].keys()
+  print(img_dict[list(img_dict.keys())[0]]['grasps'].keys())
+  display_grasps_per_object(img_dict)
+
+
