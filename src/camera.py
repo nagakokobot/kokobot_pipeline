@@ -102,8 +102,7 @@ class Camera:
         imsave(img_path, self.rgb)
         #imwrite(d_path, self.depth.get_data())
         imwrite(d_path, self.depth)
-        print('max and min values of the depth in PIPELINE before writing are: ', np.max(self.depth), np.min(self.depth))
-        print('Images of the workspace saved')
+        print('Images of the workspace saved to work folder')
   
         return img_path, d_path
     

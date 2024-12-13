@@ -2,9 +2,10 @@ from ultralytics import YOLO
 from typing import Union
 import numpy as np
 import matplotlib.pyplot as plt
-from skimage.transform import resize
+#from skimage.transform import resize
 
 from helpers import get_model_path
+
 
 
 
@@ -28,38 +29,37 @@ class Segment:
       image = plt.imread(image)
       if np.max(image) < 2:
         image = image*255
-    result = self.model(image)
-    #masks = result[0].masks.data.cpu().numpy()
-    '''
-    result_dict = {}
-    for r in result:
-      for ci, c in enumerate(r):
-        label = c.names[c.boxes.cls.tolist().pop()]
-        temp_mask = c.masks.data.cpu().numpy()
-        result_dict.update([label, temp_mask])
-    '''
+
+    result = self.model(image, conf = 0.8 , imgsz = 320, verbose = False, retina_masks=True)
     return result
-  
 
-def overlap_masks(result, image):
-  org_width, org_height = image.shape[:2]
-  print('passed image shape is: ', image.shape)  #has shape (300,300)
-  masks_dict = {}
-  for r in result:
-      for ci, c in enumerate(r):
-        label = c.names[c.boxes.cls.tolist().pop()]
-        temp_mask = c.masks.data.cpu().numpy().transpose(1,2,0)
-        temp_mask = np.squeeze(temp_mask)
-        print(f'temp_mask shape before reshapeing of object {label} is: ',temp_mask.shape)
-        temp_mask = resize(temp_mask, (image.shape[0],image.shape[1]),preserve_range= True).astype(image.dtype)
-        print(f'temp_mask shape after reshapeing of object {label} is: ',temp_mask.shape)
-        if label in masks_dict.keys():
-          label = label+'_'+str(ci)
-        masks_dict.update([(label, temp_mask)])
- 
-  return masks_dict
     
+def get_masks_from_seg_res(image_dict):
 
+  cls_names = {0:'metal_part', 1:'plastic_part'}
+  for obj, itype in image_dict.items():
+      '''
+      iterate through the image dic and produce three masks for each object crop inside
+      consisting of metal_part, plastic_part and full image and (another function to make tensors and prediction, or update the exisitng function of 'pred_grasps_and_display')
+      '''
+      #itype['segmentation_masks'] = {'plastic_part':{}, 'metal_part':{}}
+      itype['segmentation_masks'] = {}
+      res = itype['seg_res'][0]
+      cls = res.boxes.cls.tolist()
+      masks = res.masks.data.cpu().numpy()
+      if len(masks)>0:
+        for i, m in enumerate(masks):
+          #print(res[i].boxes.cls.tolist().pop())
+          label = cls_names[int(cls[i])]
+          #m_i_resize = resize(m, (300,300), preserve_range= True).astype(res.orig_img.dtype)
+          temp = itype['formatted_crop_depth']*m
+          if label in itype['segmentation_masks'].keys():
+            label = label+str(i)
+          itype['segmentation_masks'].update([(label, temp)])
+      else:
+        print(f'No segmentation mask result found for {obj}')
+      
+  return image_dict
 
 
 if __name__ == '__main__':

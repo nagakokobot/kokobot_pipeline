@@ -2,17 +2,18 @@ import argparse
 import sys
 sys.path.append('/home/student/naga/kokobot_pipeline')  #to run from terminal
 import pyzed.sl as sl
-import torch
-import matplotlib.pyplot as plt
-import cv2
+import pandas as pd
 from datetime import datetime
+import os, shutil
 
 from camera_parameters import get_camera_serial_number, get_init_camera_paramaters, get_runtime_camera_parameters
 from helpers import create_folder
 from camera import Camera
 from detection import Detector, Inference
-from grasp_synthesis import load_grasping_model, Process_crops, pred_grasps_and_display
- 
+from grasp_synthesis import load_grasping_model, Process_crops, pred_grasps_and_display, make_tensors_and_predict_grasps, display_grasps_per_object
+from segment import get_masks_from_seg_res
+
+os.environ['YOLO_VERBOSE'] = 'False'
 
 
 def parse_args():
@@ -58,9 +59,10 @@ if __name__ == '__main__':
     args_dict = {'camera_resolution': 'HD1080',
             'det_conf': 0.75,
             'iou': 0.7,
-            'det_ver':'v5',
+            'det_ver':'v8',
             'det_device':'cpu',
-            'grasp_model_name': 'd_grasp.pt'}
+            'grasp_model_name': 'd_grasp.pt',
+            'include_segmentation':True}
 
     ##main script runs here...
 
@@ -78,6 +80,7 @@ if __name__ == '__main__':
     flag, s_path = create_folder(sub_name=folder_name, parent_name='project_aux')
     if flag:
         # Check if cameras were connected 
+        print('1: Getting camera serial numbers to open camera and get images')
         cameras,serial_number = get_camera_serial_number()
 
         init_params = get_init_camera_paramaters(args = args_dict, serial_number= serial_number, save_path = s_path)
@@ -89,37 +92,42 @@ if __name__ == '__main__':
         if cam_obj.is_opened():
             cam.close_cam()
         del cam
+        
         #model = Detector(detector_version = args_dict['det_ver'], device=args_dict['det_device'])
+        print('2: Loading detector for object detection for inference on Images')
         with Detector(detector_version = args_dict['det_ver'], device=args_dict['det_device']) as d_model:
             model = d_model.model
 
-        inf1 = Inference(model = model, image= rgb.copy(), detector_version= args_dict['det_ver'], args = args_dict)
+        inf1 = Inference(model = model, image= rgb.copy(), detector_version= args_dict['det_ver'], project = s_path,args = args_dict)
         pr = inf1.process_results()
-        print(pr)
         d_model.del_model()
- 
-        ## TODO: work with the results and show/save them in respective folder
-        if args_dict['det_ver'] == 'v5':
-            #inf1.res.show()
-            inf1.res.save(save_dir=s_path+'/inference_result')
-        if args_dict['det_ver'] == 'v8':  #check the color format
-            _, r_path = create_folder('inference_result',s_path)
-            for r in inf1.res:
-                frm = r.plot()
-                plt.imshow(frm)
-                plt.show()
-                r.save(filename=s_path+'/inference_result_yolov8.png')
-        csv_path = s_path+'/inference_result/detections.csv'
-        pr.to_csv(csv_path)
-
+        if pr.empty:
+            print('No objects found in the workspace, deleting work folder')
+            shutil.rmtree(s_path)
+            sys.exit()
+        else:
+            print('Detected Objects in the work space are: ',pd.Series(pr.loc[:,'name']).to_list())
         
+        
+        print('3: Loading grasp model and croping the image for generating individual grasps')
         grasp_model = load_grasping_model(model_name=args_dict['grasp_model_name'])
         object_crops = Process_crops(rgb=rgb, depth=depth_cam, coordinates=pr, include_segmentation = True)
         image_dict = object_crops.image_dict
         object_crops.show_crops()
-
-        image_dict, grasps = pred_grasps_and_display(model = grasp_model, image_dict= image_dict, display_images= True)
-        print(grasps)   
+        #image_dict[list(image_dict.keys())[0]]['seg_res'][0].show()   
 
         # in progress segmentation
-         
+        if not args_dict['include_segmentation']:
+            image_dict, grasps = pred_grasps_and_display(model = grasp_model, image_dict= image_dict, display_images= True)
+        else:
+            #for i, (obj, itype) in enumerate(img_dict.items()):
+            image_dict = get_masks_from_seg_res(image_dict= image_dict)
+            image_dict = make_tensors_and_predict_grasps(image_dict=image_dict, grasp_model=grasp_model)
+            
+            display_grasps_per_object(image_dict=image_dict)
+            #print(image_dict[list(image_dict.keys())[0]]['grasps'].keys())
+            #metal_depth = image_dict[list(image_dict.keys())[0]]['segmentation_masks']['metal_part']['metal_part']
+            #metal_tensor = object_crops.make_tensors(fin_rgb=image_dict[list(image_dict.keys())[0]]['formatted_crop_rgb'].img, fin_depth=metal_depth)
+
+
+

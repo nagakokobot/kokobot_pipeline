@@ -9,7 +9,7 @@ from typing import Union
 import matplotlib
 #from yolov5.utils.plots import output_to_target
 
-from helpers import get_model_path, sort_args
+from helpers import get_model_path, sort_args, create_folder
 from defaults import det_args
 
 
@@ -30,7 +30,6 @@ class Detector:
             
         #get the path where the model is saved.
         self.model_path = get_model_path(task = 'detection', version = self.det_ver)
-        print(self.model_path)
         #self.model = self.check_architecture(model_path)
 
     def __enter__(self):
@@ -46,7 +45,7 @@ class Detector:
 
         if self.det_ver == 'v5':
             with torch.no_grad():
-                model = torch.hub.load('ultralytics/yolov5', 'custom', path= model_path, device =self.device,  force_reload=True)
+                model = torch.hub.load('ultralytics/yolov5', 'custom', path= model_path, device =self.device,_verbose=False, force_reload= True)
         else:
             model = YOLO(model_path, task='detect').to(self.device)
 
@@ -58,7 +57,6 @@ class Detector:
         if next(self.model.parameters()).is_cuda:
             print('Clearing gpu memory')
             torch.cuda.empty_cache()
-        print('deleting model')
         del self.model
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -71,10 +69,12 @@ class Inference:
     - also to show the inferences on the image for clear understanding
     '''
 
-    def __init__(self, model, image:Union[str, np.ndarray], detector_version: str = 'v5', args :dict = None):
+    def __init__(self, model, image:Union[str, np.ndarray], detector_version: str = 'v5', args :dict = None, project:str = None):
         self.model = model
         self.image = image
         self.det_ver = detector_version
+        self.save_path = project
+       # _, self.save_path = create_folder('inference_result',project)
         self.conf, self.iou, _ = process_args(args)
         self.res = self.get_inference()
         #pr = self.process_results(self.res)
@@ -83,9 +83,11 @@ class Inference:
         if self.det_ver == 'v5':
             self.model.conf = self.conf
             self.model.iou = self.iou
+            self.model.multi_label = False
             results = self.model(self.image)
+            results.save(save_dir = self.save_path+'/'+'inference_result')
         elif self.det_ver == 'v8':
-            results = self.model.predict(self.image, conf = self.conf, iou = self.iou)
+            results = self.model.predict(self.image,conf = self.conf, iou = self.iou, save = True, project = self.save_path, name = 'inference_result')
         return results
     
     def process_results(self):
@@ -117,7 +119,7 @@ class Inference:
             df['confidence'] = all_confidences
             df['class'] = all_class_ids
             df['name'] = all_class_names
-
+        df.to_csv(self.save_path+'/inference_result/detections.csv')
         return df
 
     
