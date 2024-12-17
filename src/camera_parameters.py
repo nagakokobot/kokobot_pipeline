@@ -1,6 +1,6 @@
 import pyzed.sl as sl
 import argparse
-import os
+import os, sys
 
 from defaults import camera_init_parameters, camera_runtime_parameters
 from helpers import sort_args, create_folder
@@ -19,10 +19,10 @@ This script is used to
 def get_camera_serial_number():
 
     cameras = sl.Camera.get_device_list()
-    if cameras is None:
+    if not cameras:
         print('No cameras were detected')
         # The whole python execution has to stop here.
-        exit()
+        sys.exit()
     else:
         if len(cameras)== 1:
             print('1 camera found')
@@ -153,11 +153,13 @@ if __name__ == '__main__':
     init_params = get_init_camera_paramaters(args = u_args, save_path=s_path)
     print(init_params)
     '''
-
+    '''
     #for testing get_runtime_camera_parameters..
     _, s_path = create_folder('test_folder1', 'project_aux')
     u_args = {'measure3D_reference_frame': 'world',
               'confidence_threshold': 70}
     run_params = get_runtime_camera_parameters(args = u_args, save_path=s_path)
+    '''
     
-    
+    cams, sn = get_camera_serial_number()
+    print(cams, sn)
