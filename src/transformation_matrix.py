@@ -80,6 +80,7 @@ if __name__ == '__main__':
      cam_3d_coords.append([int(xc),int(yc),int(zc)])
 
   cam.close_cam()
+  # example robot coordinates, [[X_r, Y_r, Z_r]]
   test_robot_coords = [[50,300,0],[25,150,0],[-45,250,0],[-30,150,0]] #example coordinates in robot reference frame
   print(cam_3d_coords)
 

@@ -10,8 +10,9 @@ from camera_parameters import get_camera_serial_number, get_init_camera_paramate
 from helpers import create_folder
 from camera import Camera
 from detection import Detector, Inference
-from grasp_synthesis import load_grasping_model, Process_crops, pred_grasps_and_display, make_tensors_and_predict_grasps, display_grasps_per_object
+from grasp_synthesis import load_grasping_model, Process_crops, pred_grasps_and_display, make_tensors_and_predict_grasps, display_grasps_per_object, display_grasps_per_image
 from segment import get_masks_from_seg_res
+from transform import transform_grasps
 
 os.environ['YOLO_VERBOSE'] = 'False'
 
@@ -113,7 +114,7 @@ if __name__ == '__main__':
         grasp_model = load_grasping_model(model_name=args_dict['grasp_model_name'])
         object_crops = Process_crops(rgb=rgb, depth=depth_cam, coordinates=pr, include_segmentation = True)
         image_dict = object_crops.image_dict
-        object_crops.show_crops()
+        #object_crops.show_crops()
         #image_dict[list(image_dict.keys())[0]]['seg_res'][0].show()   
 
         # in progress segmentation
@@ -128,6 +129,5 @@ if __name__ == '__main__':
             #print(image_dict[list(image_dict.keys())[0]]['grasps'].keys())
             #metal_depth = image_dict[list(image_dict.keys())[0]]['segmentation_masks']['metal_part']['metal_part']
             #metal_tensor = object_crops.make_tensors(fin_rgb=image_dict[list(image_dict.keys())[0]]['formatted_crop_rgb'].img, fin_depth=metal_depth)
-
-
+        display_grasps_per_image(image_dict = image_dict, org_image = rgb)
 

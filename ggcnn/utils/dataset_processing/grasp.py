@@ -225,7 +225,7 @@ class GraspRectangle:
         """
         :return: Rectangle center point
         """
-        return self.points.mean(axis=0).astype(np.int)
+        return self.points.mean(axis=0).astype(np.int32)
 
     @property
     def length(self):
