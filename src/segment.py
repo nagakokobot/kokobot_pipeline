@@ -45,19 +45,20 @@ def get_masks_from_seg_res(image_dict):
       #itype['segmentation_masks'] = {'plastic_part':{}, 'metal_part':{}}
       itype['segmentation_masks'] = {}
       res = itype['seg_res'][0]
-      cls = res.boxes.cls.tolist()
-      masks = res.masks.data.cpu().numpy()
-      if len(masks)>0:
-        for i, m in enumerate(masks):
-          #print(res[i].boxes.cls.tolist().pop())
-          label = cls_names[int(cls[i])]
-          #m_i_resize = resize(m, (300,300), preserve_range= True).astype(res.orig_img.dtype)
-          temp = itype['formatted_crop_depth']*m
-          if label in itype['segmentation_masks'].keys():
-            label = label+str(i)
-          itype['segmentation_masks'].update([(label, temp)])
-      else:
-        print(f'No segmentation mask result found for {obj}')
+      if res:
+        cls = res.boxes.cls.tolist()
+        masks = res.masks.data.cpu().numpy()
+        if len(masks)>0:
+          for i, m in enumerate(masks):
+            #print(res[i].boxes.cls.tolist().pop())
+            label = cls_names[int(cls[i])]
+            #m_i_resize = resize(m, (300,300), preserve_range= True).astype(res.orig_img.dtype)
+            temp = itype['formatted_crop_depth']*m
+            if label in itype['segmentation_masks'].keys():
+              label = label+str(i)
+            itype['segmentation_masks'].update([(label, temp)])
+        else:
+          print(f'No segmentation mask result found for {obj}')
       
   return image_dict
 

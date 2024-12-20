@@ -21,7 +21,7 @@ class Camera:
         try:
             s_number = self.zed.get_camera_information().serial_number
             print('Camera object created for the camera serial number:', s_number)
-            self.bgra_mat, self.depth_mat = sl.Mat(), sl.Mat()
+            self.bgra_mat, self.depth_mat, self.point_cloud = sl.Mat(), sl.Mat(), sl.Mat()
             self.get_mats()
             self.rgb = cv2.cvtColor(self.bgra_mat.get_data(), cv2.COLOR_BGRA2RGB)
             self.depth = self.depth_mat.numpy()
@@ -67,7 +67,7 @@ class Camera:
         if new_frame_err == sl.ERROR_CODE.SUCCESS:
             self.zed.retrieve_image(self.bgra_mat, sl.VIEW.LEFT)
             self.zed.retrieve_measure(self.depth_mat, sl.MEASURE.DEPTH)
-        
+            self.zed.retrieve_measure(self.point_cloud,sl.MEASURE.XYZRGBA )
         #return rgb_mat, depth_mat
     
     def show_wrkspc(self, serial_num = int):
@@ -106,6 +106,16 @@ class Camera:
   
         return img_path, d_path
     
+    def get_xyz(self,x,y):
+        err, pc_value = self.point_cloud.get_value(x, y)
+        if err == sl.ERROR_CODE.SUCCESS:
+          X_c = pc_value[0]
+          Y_c= pc_value[1]
+          Z_c=pc_value[2]
+        else:
+            return None, None, None
+        return X_c, Y_c, Z_c
+
     def close_cam(self):
         if self.zed.is_opened():
             self.zed.close()

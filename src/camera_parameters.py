@@ -1,6 +1,6 @@
 import pyzed.sl as sl
 import argparse
-import os
+import os, sys
 
 from defaults import camera_init_parameters, camera_runtime_parameters
 from helpers import sort_args, create_folder
@@ -19,10 +19,10 @@ This script is used to
 def get_camera_serial_number():
 
     cameras = sl.Camera.get_device_list()
-    if cameras is None:
+    if not cameras:
         print('No cameras were detected')
         # The whole python execution has to stop here.
-        exit()
+        sys.exit()
     else:
         if len(cameras)== 1:
             print('1 camera found')
@@ -82,6 +82,14 @@ def get_init_camera_paramaters(args:dict, save_path:str = False,serial_number:in
             possible_args.remove('camera_fps')
         #print('possible args after fps :', possible_args)
         #print('new args dict after fps',new_args_dict)
+        if 'coordinate_units' in possible_args:
+            if args['coordinate_units'] == 'cm':
+                new_args_dict['depth_minimum_distance'] = 100
+                new_args_dict['depth_maximum_distance'] = 150
+            if args['coordinate_units'] == 'm':
+                new_args_dict['depth_minimum_distance'] = 1.0
+                new_args_dict['depth_maximum_distance'] = 1.5
+
 
         for i in possible_args:
             if args[i] in d_init_params[i]:
@@ -143,21 +151,30 @@ def get_runtime_camera_parameters(args:dict, save_path:str = None):
 
 if __name__ == '__main__':
 
-    '''
+    
     #for testing get_init_camera_parameters..
     u_args = {'camera_resolution': 'HD720',
               'camera_fps': 60,
-          'depth_mode': 'PERFORMANCE'}
-    _, s_path = create_folder('test_folder1')
+          'depth_mode': 'PERFORMANCE',
+          'coordinate_units': 'mm'}
+    _, s_path = create_folder('test_folder1', 'project_aux')
     #u_args = {'runtime': 0}
     init_params = get_init_camera_paramaters(args = u_args, save_path=s_path)
-    print(init_params)
-    '''
+    print(init_params.depth_minimum_distance)
+    print(init_params.depth_maximum_distance)
+    print(init_params.coordinate_units)
 
+
+
+    '''
     #for testing get_runtime_camera_parameters..
     _, s_path = create_folder('test_folder1', 'project_aux')
     u_args = {'measure3D_reference_frame': 'world',
               'confidence_threshold': 70}
     run_params = get_runtime_camera_parameters(args = u_args, save_path=s_path)
-    
-    
+    '''
+    '''
+    cams, sn = get_camera_serial_number()
+    print(cams, sn)
+    '''
+
