@@ -112,17 +112,20 @@ if __name__ == '__main__':
         grasp_model = load_grasping_model(model_name=args_dict['grasp_model_name'])
         object_crops = Process_crops(rgb=rgb, depth=depth_cam, coordinates=pr, include_segmentation = True)
         image_dict = object_crops.image_dict
-        #object_crops.show_crops()
+        object_crops.show_crops()
+        image_dict[list(image_dict.keys())[0]]['seg_res'][0].show() 
 
         if not args_dict['include_segmentation']:
             image_dict, grasps = pred_grasps_and_display(model = grasp_model, image_dict= image_dict, display_images= True)
+            print('exiting the pipeline, to continue execution "make args[include_segmentation] = True"')
+            sys.exit()
         else:
             #for i, (obj, itype) in enumerate(img_dict.items()):
             image_dict = get_masks_from_seg_res(image_dict= image_dict)
             image_dict = make_tensors_and_predict_grasps(image_dict=image_dict, grasp_model=grasp_model)
             
             display_grasps_per_object(image_dict=image_dict)
-        display_grasps_per_image(image_dict = image_dict, org_image = rgb)
+            display_grasps_per_image(image_dict = image_dict, org_image = rgb)
 
         #get the saved transformation matrix and transform the coordinates of the grasp centers to robot coordinates
         t_m = Robot_coordinates()
