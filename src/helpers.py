@@ -16,10 +16,13 @@ def sort_args(args, options):
     filtered_options = {option for option in possible_options if args[option]!=None}
     return filtered_options
 
-def create_folder(sub_name, parent_name):
+def create_folder(sub_name, parent_name=None):
     #later has to be changed to handle better folder creation and check
     flag = False
-    c_path = f'{parent_name}/{sub_name}'
+    if parent_name:
+      c_path = f'{parent_name}/{sub_name}'
+    else:
+        c_path = f'{sub_name}'
     if not os.path.exists(c_path):
         os.mkdir(c_path)
         print(f'Working folder is created with the name: {c_path}')
@@ -99,5 +102,7 @@ def get_model_path(task:str, version: str = 'v5', model_name :str=None):
 if __name__ == '__main__':
      
     #path = get_model_path(task='detection', version='v5', model_name='custom')
-    path = get_model_path(task='grasp_synthesis', model_name='custom')
-    print(type(path), path)
+    #path = get_model_path(task='grasp_synthesis', model_name='custom')
+    #print(type(path), path)
+
+    _, s_path = create_folder(sub_name='transformation')  # parent_name='kokobot_pipeline'

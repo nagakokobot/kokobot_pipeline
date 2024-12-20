@@ -5,6 +5,7 @@ import pyzed.sl as sl
 import pandas as pd
 from datetime import datetime
 import os, shutil
+import numpy as np
 
 from camera_parameters import get_camera_serial_number, get_init_camera_paramaters, get_runtime_camera_parameters
 from helpers import create_folder
@@ -12,7 +13,7 @@ from camera import Camera
 from detection import Detector, Inference
 from grasp_synthesis import load_grasping_model, Process_crops, pred_grasps_and_display, make_tensors_and_predict_grasps, display_grasps_per_object, display_grasps_per_image
 from segment import get_masks_from_seg_res
-from transform import transform_grasps
+from transform import Robot_coordinates
 
 os.environ['YOLO_VERBOSE'] = 'False'
 
@@ -58,6 +59,7 @@ if __name__ == '__main__':
     
     #till the argparse is sorted:
     args_dict = {'camera_resolution': 'HD1080',
+                 'coordinate_units': 'mm',
             'det_conf': 0.75,
             'iou': 0.7,
             'det_ver':'v8',
@@ -89,10 +91,6 @@ if __name__ == '__main__':
         cam = Camera(initparameters= init_params, runtimeparameters=runtime_params, save_path= s_path, show_workspace= False)
         cam_obj = cam.zed
         rgb, depth_cam, rgb_path, depth_path = cam.rgb, cam.depth.copy(), cam.rgb_path, cam.depth_path
-        #close the camera object
-        if cam_obj.is_opened():
-            cam.close_cam()
-        del cam
         
         #model = Detector(detector_version = args_dict['det_ver'], device=args_dict['det_device'])
         print('2: Loading detector for object detection for inference on Images')
@@ -115,9 +113,7 @@ if __name__ == '__main__':
         object_crops = Process_crops(rgb=rgb, depth=depth_cam, coordinates=pr, include_segmentation = True)
         image_dict = object_crops.image_dict
         #object_crops.show_crops()
-        #image_dict[list(image_dict.keys())[0]]['seg_res'][0].show()   
 
-        # in progress segmentation
         if not args_dict['include_segmentation']:
             image_dict, grasps = pred_grasps_and_display(model = grasp_model, image_dict= image_dict, display_images= True)
         else:
@@ -126,8 +122,27 @@ if __name__ == '__main__':
             image_dict = make_tensors_and_predict_grasps(image_dict=image_dict, grasp_model=grasp_model)
             
             display_grasps_per_object(image_dict=image_dict)
-            #print(image_dict[list(image_dict.keys())[0]]['grasps'].keys())
-            #metal_depth = image_dict[list(image_dict.keys())[0]]['segmentation_masks']['metal_part']['metal_part']
-            #metal_tensor = object_crops.make_tensors(fin_rgb=image_dict[list(image_dict.keys())[0]]['formatted_crop_rgb'].img, fin_depth=metal_depth)
         display_grasps_per_image(image_dict = image_dict, org_image = rgb)
 
+        #get the saved transformation matrix and transform the coordinates of the grasp centers to robot coordinates
+        t_m = Robot_coordinates()
+        print('robot coordinates------')
+        for obj,itype in image_dict.items():
+            print(f'for object {obj} ')
+            grasps = itype['grasps']
+            for stype, im in grasps.items():
+                i_grasp = im['image_grasps']
+                yi, xi = i_grasp[0].center    #take the best grasp for all the segmentation types
+                print(xi, yi)
+                xc,yc,zc = cam.get_xyz(int(xi), int(yi))
+                print(xc,yc,zc)
+                if xc:
+                  xr,yr,zr = t_m.transform_camera_to_robot([xc,yc,zc])
+                else:
+                    xr,yr,zr = None, None, None
+                print(f'with seg_mask named {stype}, the robot coordinates are: {xr,yr,zr} in mm along x,y,z')
+        cam.close_cam()
+
+        #close the camera object
+        #if cam_obj.is_opened():
+        #    cam.close_cam()

@@ -112,6 +112,8 @@ class Camera:
           X_c = pc_value[0]
           Y_c= pc_value[1]
           Z_c=pc_value[2]
+        else:
+            return None, None, None
         return X_c, Y_c, Z_c
 
     def close_cam(self):
